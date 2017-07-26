@@ -9,7 +9,7 @@ bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", header=TRUE, sep
 proc.time()
 print("Done reading in file")
 print("number of rows at this point")
-#bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
+#bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects aross all fields
 dataDictionary <- fread("/home/jh137539/ukb/dataCoding/Data_Dictionary_Showcase.csv",header = T)
 dataCoding <- fread("/home/jh137539/ukb/dataCoding/Codings_Showcase.csv")
 phewasDefinition <- fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
