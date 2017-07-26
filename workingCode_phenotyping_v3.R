@@ -245,7 +245,7 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100349"]$FieldID)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100352"]$FieldID){
   fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
 
 #Recode Data-code 100356 (-1=NA,-3=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100356"]$FieldID){
@@ -1796,7 +1796,7 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 print("number of rows at this point")
 nrow(bd)
 
-
+######################################################################################################################################################
 #HES Data
 #There is an issue with record "4226129" in "/GWD/appbase/projects/RD-TSci-UKB/data_download/HES_test_RS/HESIN_26041_all.tsv" 
 #It has additonal characters/delimiters that are throwing errors in parsing the file within R.
@@ -1806,8 +1806,6 @@ nrow(bd)
 #awk -F"\t" '$2!=4226129 {print $0}' /GWD/appbase/projects/RD-TSci-UKB/data_download/HES_test_RS/HESIN_26041_all.tsv > /home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv
 #Problematic record id in secondary fileset as well
 #awk -F"\t" '$2!=4226129 {print $0}' ~/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.tsv > ~/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv
-
-
 hesDataPrim <- fread("/home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
 hesDataSec <- fread("/home/jh137539/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
 #PheWasDefinitions
@@ -2123,7 +2121,102 @@ for(currentField in myNamingScheme$FieldID){
 #Run one final fix of any special characters such as underscores at the end of the decscription
 names(bd)=gsub(" ", "_",names(bd))
 names(bd)=gsub("_{1,}", "_",names(bd))
+names(bd)=gsub(" {1,}", "_",names(bd))
 names(bd)=gsub("_$", "",names(bd))
+
+#####################################################################################################################################
+#Two Way and Three Way Mapping
+#####################################################################################################################################
+twoWayMapping <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string"))
+twoWayMapping4or5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
+#Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview
+
+#Controls are those subjects that have a 0 for both data types, cases can be from either or
+#This code is dependent on naming scheme prefix!
+#Start by defining function
+nurseInt_hes_2Way_function=function(interviewCode,hesCode){
+  fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+  fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
+  fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),sep="_")
+  #print(fieldCombined)
+  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+}
+
+#Run the two way mapping function in a for loop
+for(i in seq_along(twoMayMapping$V1)) {
+  tryCatch({
+  x=twoWayMapping[[i,1]]
+  y=twoWayMapping[[i,2]]
+  nurseInt_hes_2Way_function(x,y)
+  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+
+#####################################################################################################################################
+#Run the two way mapping with ICD10 codes that require 4 and 5 digits
+#Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
+phewasMappingDefinitions <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
+phewasMappingDefinitions$PHENOTYPE=gsub("[[:punct:]]", "_",phewasMappingDefinitions$PHENOTYPE)
+phewasMappingDefinitions$icd10=paste0("p_",phewasMappingDefinitions$icd10)
+names(phewasMappingDefinitions)=c("pheno","PHENOTYPE")
+hesDataPrim <- fread("/home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+hesDataSec <- fread("/home/jh137539/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
+names(hesDataPrim)[5]="diag"
+names(hesDataSec)[4]="diag"
+hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
+hesDataCombined$diag=paste0("p_",substr(hesDataCombined$diag,1,5)) #Changed to 5 characters
+names(hesDataCombined)[1:2]=c("f.eid","dxField")
+fieldLong<-hesDataCombined
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+fieldLong[,DX := 1]
+#Included this extra step here since we dont need all ICD10 codes
+fieldLong<-fieldLong[phewasMappingDefinitions,nomatch="0",on=c("dxField"="pheno")][,-4]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("HES_4or5_char",currentName,"BIN",filter(phewasMappingDefinitions,pheno==currentName)["PHENOTYPE"],sep = "_"))
+setkey(fieldWide,f.eid)
+#bdIDs <- bd[,c(1,1)]
+#bdIDs <- setnames(bdIDs,c(1,2),c("f.eid","f.eid2"))
+setkey(bd,f.eid)
+bd <- merge(bd,fieldWide,all.x=T)
+#Replace NAs with 0 in bd for the HES columns as those are subjects with no reported ICD10 codes
+for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
+####################################################
+#Modify function to use this new file and naming scheme
+nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode){
+  fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+  fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
+  fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),sep="_")
+  #print(fieldCombined)
+  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+}
+
+#Run the two way mapping function in a for loop
+for(i in seq_along(twoWayMapping4or5$V1)) {
+  tryCatch({
+  x=twoWayMapping4or5[[i,1]]
+  y=twoWayMapping4or5[[i,2]]
+  nurseInt_hes_2Way_5char_function(x,y)
+  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+
+
+#####################################################################################################################################
+#Tabulate two mapping data
+{combineTable<-data.frame(matrix(nrow=2,ncol=2))
+  names(combineTable)=c("remove1","remove2")
+  for (i in names(bd)[grep("map2way",names(bd))]) {
+    tryCatch({
+    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+    print(i)
+ },error=function(e){}) }
+    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+    combineTable <- select(combineTable,contains("map2Way"))
+    print(i)
+    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/twoWayTables.tables.csv")
+  }
+  
+  ####################################################################################################################################
 
 #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
 {combineTable<-data.frame(matrix(nrow=2,ncol=2))
