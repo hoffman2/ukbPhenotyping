@@ -5,11 +5,11 @@ library(gdata)
 #All fields and subjects
 print("time to read in full pheWas table:Start")
 proc.time()
-bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", header=TRUE, sep="\t")
+#bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", header=TRUE, sep="\t")
 proc.time()
 print("Done reading in file")
 print("number of rows at this point")
-#bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
+bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
 dataDictionary <- fread("/home/jh137539/ukb/dataCoding/Data_Dictionary_Showcase.csv",header = T)
 dataCoding <- fread("/home/jh137539/ukb/dataCoding/Codings_Showcase.csv")
 phewasDefinition <- fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
@@ -2137,13 +2137,13 @@ twoWayMapping4or5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_
 nurseInt_hes_2Way_function=function(interviewCode,hesCode){
   fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
   fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
-  fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),sep="_")
+  fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode,"BIN"),sep="_")
   #print(fieldCombined)
   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 }
 
 #Run the two way mapping function in a for loop
-for(i in seq_along(twoMayMapping$V1)) {
+for(i in seq_along(twoWayMapping$V1)) {
   tryCatch({
   x=twoWayMapping[[i,1]]
   y=twoWayMapping[[i,2]]
@@ -2186,7 +2186,7 @@ for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=whic
 nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode){
   fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
   fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
-  fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),sep="_")
+  fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode,"BIN"),sep="_")
   #print(fieldCombined)
   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 }
@@ -2215,7 +2215,7 @@ for(i in seq_along(twoWayMapping4or5$V1)) {
     print(i)
     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/twoWayTables.tables.csv")
   }
-  
+
   ####################################################################################################################################
 
 #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
@@ -2243,6 +2243,6 @@ print("time to write files:Start")
 proc.time()
   write.csv(select(bd,c(f.eid,contains("BIN"))),quote=F,row.names=F,file="phewasTable.BIN.phenoFile.csv")
   write.csv(select(bd,c(f.eid,contains("QUANT"))),quote=F,row.names=F,file="phewasTable.QUANT.phenoFile.csv")
-  write.csv(select(bd,c(f.eid,contains("_CAT_"))),quote=F,row.names=F,file="phewasTable.CAT.phenoFile.csv")  
+  write.csv(select(bd,c(f.eid,contains("_CAT_"))),quote=F,row.names=F,file="phewasTable.CAT.phenoFile.csv")
 print("time to write files:Stop")
 proc.time()
