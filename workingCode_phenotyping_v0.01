@@ -153,6 +153,8 @@ bd[,f.100022.3.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.10058
 bd[,f.100022.4.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.4.0,NA)]
 print("finished conditional phenotypes")
 
+################################################################################################################################333
+#Following are coded in manually;if we change naming scheme this needs to be updated
 #Take maximum of field 46 
 bd$f.46_f_QUANT_grip_strength_maximumValue <- apply(select(bd,starts_with("f.46.")),1,max,na.rm=T)
 set(bd,i=which(is.infinite(bd[["f.46_f_QUANT_grip_strength_maximumValue"]])),j="f.46_f_QUANT_grip_strength_maximumValue",value=NA)
@@ -203,7 +205,6 @@ bd[,f.100022_f_QUANT_alchohol_intake_first_complete_value:=ifelse(!is.na(f.10002
 #Aggregation of field code 40000 (Death Date converted to yes/no) (No age attached)
 bd[,f.40000_f_BIN_DIED := ifelse(!is.na(f.40000.0.0)|!is.na(f.40000.1.0)|!is.na(f.40000.2.0),1,0)]
 
-
 #Recode 3mm code-33 fields
 code33Fields=c("5155","5149","5164","5152")
 for(currentField in code33Fields){
@@ -239,7 +240,13 @@ for(field in fieldArray) set(bd, i=which(bd[[field]]=="-6"), j=field, value=NA)
 #Recode smoking status (-818=NA)
 #fieldArray=names(select(bd,starts_with(paste0("f.","22506","."))))
 fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","22506","\\.")),value=TRUE)
-for(field in fieldArray) set(bd, i=which(bd[[field]]=="-818"), j=field, value=NA)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==-818), j=field, value=NA)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==111|bd[[field]]==112|bd[[field]]==113), j=field, value=1)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==114), j=field, value=0)
+
+#set missing for field 51814(no data coding present for this field)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","51814","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="-1"), j=field, value=NA)
 
 #Recode fields with 100291(0=0,1=1,2=1,-3=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "90"]$FieldID){
@@ -287,8 +294,7 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100352"]$FieldID)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100356"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
 
 #Recode Data-code 100357 (-3=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100357"]$FieldID){
@@ -300,12 +306,15 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100357"]$FieldID)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100358"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
 
 #Recode Data-code 100359 (-3=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100359"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3|bd[[field]]==4), j=field, value=0)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
 
 #Recode Data-code 100360 (-3=NA)
@@ -318,8 +327,9 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100360"]$FieldID)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100369"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3|bd[[field]]==4), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)}
 
 #Recode Data-code 100668 (-1=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100668"]$FieldID){
@@ -360,12 +370,13 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "946"]$FieldID){
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-818), j=field, value=NA)}
 
 #Recode Data code 100595
+#If subject has -11(still taking pill) than replace value with age of initial assessment
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100595"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==--11), j=field, value=NA)}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-11), j=field, value=bd[bd[[field]]==-11,f.21022.0.0])}
 
 #Recode Data code 100598
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100598"]$FieldID){
@@ -373,7 +384,7 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100598"]$FieldID)
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==--11), j=field, value=NA)}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-11), j=field, value=bd[bd[[field]]==-11,f.21022.0.0])}
 
 #Recode Data code 100598
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100599"]$FieldID){
@@ -411,6 +422,19 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "402"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==0), j=field, value=NA)}
+
+#401
+for(currentField in dataDictionary[dataDictionary$Coding %in% "401"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==1|bd[[field]]==2|bd[[field]]==3), j=field, value=1)}
+
+#479
+for(currentField in dataDictionary[dataDictionary$Coding %in% "479"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==2), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==3), j=field, value=1)}
 
 #470
 for(currentField in dataDictionary[dataDictionary$Coding %in% "470"]$FieldID){
@@ -507,21 +531,23 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100511"]$FieldID)
 
 #100567
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100567"]$FieldID){
-  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)}
 
 #100569
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID){
-  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)}
 
+#100348
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100348"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
 #100569
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID){
-  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=3)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=2)
@@ -530,12 +556,23 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID)
 
 #100637
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100637"]$FieldID){
-  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=3)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=2)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100699
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100699"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==99), j=field, value=1)}
+
+#224
+for(currentField in dataDictionary[dataDictionary$Coding %in% "224"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==3|bd[[field]]==9), j=field, value=NA)}
+
 
 
 print("finished another round of recoding")
@@ -607,13 +644,13 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 print("number of rows at this point")
 nrow(bd)
 ########################################################################################################################################
-#Coding self reported cancer and age at dx
+#Coding self reported cancer and age at dx, as well as interpolated year
 #Select the subject ID and the relevant field thats needs to be aggregated
-fieldArray=names(select(bd,c(starts_with("f.20007.0"),starts_with("f.20001.0"))))
+fieldArray=names(select(bd,c(starts_with("f.20007.0"),starts_with("f.20001.0"),starts_with("f.20006.0"))))
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
 #Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
 #In this case we want to have the corresponding date attached to the DX so using both fields as our measure
-fieldLong = melt(justFields, measure = patterns("^f.20007", "^f.20001."), variable.name="arbField",value.name = c("dxAge","dxField"))
+fieldLong = melt(justFields, measure = patterns("^f.20007.", "^f.20001.","^f.20006."), variable.name="arbField",value.name = c("dxAge","dxField","dxYear"))
 #Create a new variable for the binary phenotyping of the individual data codes
 fieldLong$DX=NA
 fieldLong$DX=as.integer(fieldLong$DX)
@@ -630,30 +667,34 @@ fieldLong[,"arbField":=NULL]
 fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 #One person had lung cancer diagnosed twice, thus one instance removed due to limitations of melt function((doesnt allow dupes))
 #Convert data from long to wide format based on the cancer codes. Will now have columns labeled feid,-9,1-8,NA
-fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX"))
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX","dxYear"))
 #Remove the NA and -9 columns 
-fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
+fieldWide[,c("dxAge_NA","DX_NA","dxYear_NA"):=NULL]
 #Convert all of the cancerDX NA's in the table to 0s, leave the dxAges alone(leave NA if already NA)
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 #For subjects that were orignally coded as 99999, convert all of their rows to NA(Omitted this step from self report cancers)
 #fieldWide[painWide$`-9`==-9,c(2:ncol(fieldWide))]=NA
 #Read in a file that has the pain code definitions in the same order as the columns
 #Need to update this to first find the code definitions column and then column code
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameCancer.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameCancer.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="3",]
+names(fieldNames)[2:3]=c("V1","V2")
 #Create the abbreviated names list
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
 fieldNames$abbrev=abbreviate(fieldNames$V2,10)
 #Replace names
 #Do this once for dx age/date which is field 84
 #for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste(currentName,filter(fieldNames,V1==currentName)["abbrev"],"f.20007",sep = "_"))
-for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20007.0",currentName,"QUANT",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20007.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxYear",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20006.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
 #Do this once for the acutal cancer diagnosis that I converted to binary, which is field 20001
 #for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste(currentName,filter(fieldNames,V1==currentName)["abbrev"],"f.20001",sep = "_"))
-for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20001.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20001.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
 #Dont need step below as changed names previously in variable naming section of melt
 #names(fieldWide)= gsub("fieldCase","cancerDX",names(fieldWide))
 #Join these new columns to data.table and replace previous version
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
 ########################################################################################################################################
 
 #Self Reported non-cancer illness codes and interpolated ages
@@ -689,7 +730,9 @@ for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide,
 #fieldWide[painWide$`-9`==-9,c(2:ncol(fieldWide))]=NA
 #Read in a file that has the pain code definitions in the same order as the columns
 #Need to update this to first find the code definitions column and then column code
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameNonCancer.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameNonCancer.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="6",]
+names(fieldNames)[2:3]=c("V1","V2")
 #Create the abbreviated names list
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
 fieldNames$abbrev=abbreviate(fieldNames$V2,10)
@@ -698,8 +741,8 @@ fieldNames$abbrev=abbreviate(fieldNames$V2,10)
 #for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste(currentName,filter(fieldNames,V1==currentName)["abbrev"],"f.20009",sep = "_"))
 #Do this once for the acutal cancer diagnosis that I converted to binary, which is field 20009
 #for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste(currentName,filter(fieldNames,V1==currentName)["abbrev"],"f.20002",sep = "_"))
-for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20009.0",currentName,"QUANT",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
-for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20002.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20009.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20002.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
 names(fieldWide)=gsub("DX_","dxCode",names(fieldWide))
 names(fieldWide)=gsub("dxAge_","dxAgeCode",names(fieldWide))
 #Dont need step below as changed names previously in variable naming section of melt
@@ -738,7 +781,8 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns 
 fieldWide[,c("NA","-9"):=NULL]
 #Read in a file that has the eye code definitions 
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameGlasses.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100514",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1096,7 +1140,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the eye problem definitions (6148)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/eyeProblems.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/eyeProblems.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100523",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1141,7 +1187,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the teeth problem definitions (6149)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameTeethProblems.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameTeethProblems.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100538",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1216,7 +1264,7 @@ fieldLong$DX=NA
 fieldLong$DX=as.integer(fieldLong$DX)
 #Cancer values are positively numbered. For any code >0 assign caseCode a value of 1
 set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
-#-7 is the value of "none of the above"; code as such(NA to cancer self report)
+#-7 is the value of "none of the above"; code as such
 #set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
 #Recode "do not know" and "prefer not to answer as specifically missing" values as -9
 set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
@@ -1234,7 +1282,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the bone fracture definitions (6151)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameBoneFractures.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameBoneFractures.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100622",]
+names(fieldNames)[2:3]=c("V1","V2")
 #ADD dx to front of variable name
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -1280,7 +1330,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that correct definitions (6152)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMed.6152.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMed.6152.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100610",]
+names(fieldNames)[2:3]=c("V1","V2")
 #ADD dx to front of variable name
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -1326,7 +1378,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the definitions (6153)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameUseMedication.6153.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameUseMedication.6153.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100626",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1371,8 +1425,10 @@ for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[cur
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
-#Read in a file that has the definitions (6153)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameUseMedication.6154.ls", header=FALSE, sep="\t")
+#Read in a file that has the definitions (6154)
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameUseMedication.6154.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100628",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1417,7 +1473,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the definitions (6155)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameVitMin.6155.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameVitMin.6155.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100629",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1425,7 +1483,6 @@ fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
 fieldNames$abbrev=abbreviate(fieldNames$V2,10)
 #Replace names
 for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6155.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
-#Join these new columns to data.table and replace previous version
 #Join these new columns to data.table and replace previous version
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 print("number of rows at this point")
@@ -1465,7 +1522,9 @@ fieldWide[fieldWide$`15`=="1",c(2:ncol(fieldWide))]=1
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the definitions (6156)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameManic.6156.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameManic.6156.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100498",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1477,6 +1536,52 @@ for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fie
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 print("number of rows at this point")
 nrow(bd)
+########################################################################################################################################
+########################################################################################################################################
+#Aggregation of field code 1707(No age attached)
+
+#Select the subject ID and the relevant field thats needs to be aggregated
+fieldArray=names(select(bd,c(starts_with("f.1707.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+#Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
+#In this case we want to have the corresponding date attached to the DX so using both fields as our measure
+fieldLong = melt(justFields, measure = patterns("^f.1707.0"), variable.name="arbField",value.name = c("dxField"))
+#Create a new variable for the binary phenotyping of the individual data codes
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+#Cancer values are positively numbered. For any code >0 assign caseCode a value of 1
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#-7 is the value of "none of the above"; code as such(NA to cancer self report)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+#Recode "do not know" and "prefer not to answer as specifically missing" values as -9
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+#remove the field column as no longer relevant
+fieldLong[,"arbField":=NULL]
+#Remove duplicate columns using the subject ID,dxAge, and cancerDX codes as the key(Need to explore duplicates in more detail for handling earliest diagnosis)
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+#One person had lung cancer diagnosed twice, thus one instance removed due to limitations of melt function((doesnt allow dupes))
+#Convert data from long to wide format based on the cancer codes. Will now have columns labeled feid,-9,1-8,NA
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+#Convert all of the cancerDX NA's in the table to 0s, leave the dxAges alone(leave NA if already NA)
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#For subjects that were orignally coded as -1,or-3, convert all of their rows to NA
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+#Remove the NA and -9 columns 
+fieldWide[,c("NA","-9","0"):=NULL]
+#Read in a file that has the eye code definitions 
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameGlasses.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100430",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+#Create the abbreviated names list
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+#Replace names
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.1707.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+#Join these new columns to data.table and replace previous version
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
 ########################################################################################################################################
 
 #Aggregation of field code 6177 (No age attached)
@@ -1510,7 +1615,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the definitions (6177)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMedForBloodCholDiab.6177.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMedForBloodCholDiab.6177.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100625",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1554,7 +1661,9 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Remove the NA and -9 columns, and 0 columns 
 fieldWide[,c("NA","-9","0"):=NULL]
 #Read in a file that has the definitions (6177)
-fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMinDiet.6179.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/renameMinDiet.6179.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100630",]
+names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
 fieldNames$V1=paste0("code",fieldNames$V1)
 #Create the abbreviated names list
@@ -1566,7 +1675,7 @@ for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fie
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
-#Aggregation of field code 41210 (No age attached)
+#Aggregation of field code 41210 (No age attached); these codes are in relation to operative procedures. They are to be coded using the pheWAS code definitions
 #Select the subject ID and the relevant field thats needs to be aggregated
 fieldArray=names(select(bd,c(starts_with("f.41210.0"))))
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
@@ -2566,33 +2675,45 @@ print("Rename of variables")
 #Col1: FieldID
 #Col2: DataCodingValue
 #Col3: Field Description
+#Col4:Cat 3 from data dictionary
 
-#Final Rename of fields where we want to keep firt array of first intance. Remove all other instances and arrays
-myNamingScheme <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namingFile.all.keepFirst.txt")
+#Final Rename of fields where we want to keep first array of first intance. Remove all other instances and arrays
+myNamingScheme <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namingFile.keepFirst.priority.txt")
 myNamingScheme$Field=gsub("[[:punct:]]", "_",myNamingScheme$Field)
 myNamingScheme$Field=gsub(" ", "_",myNamingScheme$Field)
+myNamingScheme$Field=gsub(" {1,}", "_",myNamingScheme$Field)
 myNamingScheme$Field=gsub("_{1,}", "_",myNamingScheme$Field)
 myNamingScheme$Field=gsub("_$", "",myNamingScheme$Field)
+myNamingScheme$Cat3_Title=gsub("[[:punct:]]", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub(" ", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub(" {1,}", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub("_{1,}", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub("_$", "",myNamingScheme$Cat3_Title)
 for(currentField in myNamingScheme$FieldID){
   tryCatch({
     #Start by removing all but first instance and first array
     removeFields=if(length(grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE))>1) grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)[2:length(grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE))] else("NA")
+    removeFields=grep(removeFields,pattern="BIN",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="QUANT",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="CAT",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="COORD",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="DATE",invert=T,value=T)
     bd[,(removeFields):=NULL]
-    #Then rename the whats is left which is the first instance and first array
+    #Then rename whats left, which is the first instance and first array
     myFields=grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
     myFieldDescription=ifelse(length(myFields)>0,filter(myNamingScheme,FieldID==currentField)[["Field"]],"NA")
     #Use full names
-    setnames(bd,myFields,paste(myFields,"f",filter(myNamingScheme,FieldID==currentField)["Type"],myFieldDescription,sep = "_"))
+    setnames(bd,myFields,paste(myFields,"f",filter(myNamingScheme,FieldID==currentField)["traitType"],myFieldDescription,sep = "_"))
    #setnames(bd,myFields,paste(myFields,"f",filter(myNamingScheme,FieldID==currentField)["DataCodeValue"],abbreviate(myFieldDescription,10),sep = "_"))
-  },error=function(e){})}
+  },error=function(e){print(paste0("Error with:",currentField))})}
 
 print("Finished Renaming Variables")
 proc.time()
-#Run one final fix of any special characters such as underscores at the end of the decscription
 
 #####################################################################################################################################
 #Two Way and Three Way Mapping
 #####################################################################################################################################
+print("Run 2 way mapping of variables")
 twoWayMapping <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
 twoWayMapping$V3=gsub("[[:punct:]]", "_",twoWayMapping$V3)
 twoWayMapping$V3=gsub(" ", "_",twoWayMapping$V3)
@@ -2630,6 +2751,7 @@ for(i in seq_along(twoWayMapping$V1)) {
   },error=function(e){print(paste0("Error with:",x,"_",y))})}
 
 #####################################################################################################################################
+print("Run 2 way mapping of variables requiring the full ICD10 definition and not phewas codes")
 #Run the two way mapping with ICD10 codes that require 4 and 5 digits
 #Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
 phewasMappingDefinitions <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
