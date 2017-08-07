@@ -2726,16 +2726,21 @@ twoWayMapping4or5$V3=gsub(" ", "_",twoWayMapping4or5$V3)
 twoWayMapping4or5$V3=gsub("_{1,}", "_",twoWayMapping4or5$V3)
 twoWayMapping4or5$V3=gsub(" {1,}", "_",twoWayMapping4or5$V3)
 twoWayMapping4or5$V3=gsub("_$", "",twoWayMapping4or5$V3)
-#Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview
-
+#Since we will be hitting errors one certain ICD10 columns arent present due to no cases being identified, I went ahead and added in an additional column called "zeroColumn", where each row value is set to 0. 
+#This will be used in the steps below where we need to perform if else statements. In situations where a code's column isnt not find, the zeroColumn will be used as a surrogate
+#Again this is assuming that the reason that the HES code column is not present is because no cases where identified during wide formatting.
+bd$zeroColumn=0
+#Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview. 
 #Controls are those subjects that have a 0 for both data types, cases can be from either or
 #This code is dependent on naming scheme prefix!
 #Start by defining function
 nurseInt_hes_2Way_function=function(interviewCode,hesCode,phenoDescrip){
   #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
   fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
   #fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
   fieldHES=grep(x=names(bd),pattern=(paste0("HES_p_",hesCode)),value=TRUE)
+  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
   fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
   #print(fieldCombined)
   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
@@ -2787,8 +2792,10 @@ for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=whic
 nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode,phenoDescrip){
   #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
   fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
   #fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
   fieldHES=grep(x=names(bd),pattern=(paste0("HES_p_",hesCode)),value=TRUE)
+  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
   fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
   #print(fieldCombined)
   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
@@ -2821,42 +2828,207 @@ for(i in seq_along(twoWayMapping4or5$V1)) {
 #   }
 
   ####################################################################################################################################
-# #Map 3 way sets.Touch screen,Nurses interview and HES
-# #A little unstructered to run through a function
-# #DVT
-# code1=names(select(bd,c(starts_with(paste0("f.6152_code5",)))))
-# code2=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode1094",)))))
-# #code3=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",)))))
-# #code4=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",)))))
-# code5=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_1801",)))))
-# code6=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_1802",)))))
-# #code7=names(select(bd,c(starts_with(paste0("HES_p_",)))))
-# #code8=names(select(bd,c(starts_with(paste0("HES_p_",)))))
-# #code9=names(select(bd,c(starts_with(paste0("f.6152_code5",)))))
-# group="dvt"
+#Map 3 way sets.Touch screen,Nurses interview and HES
+#A little unstructered to run through a function
 
-# bd[, f.6152_code5_dxCode1094_p_1801_1802:= ifelse(bd[[code1]]==1 |
-#   bd[[code2]]==1 |
-#   #bd[[code3]]==1 |
-#   #bd[[code4]]==1 |
-#   bd[[code5]]==1 |
-#   bd[[code6]]==1 |
-#   bd[[code7]]==1 |
-#   bd[[code8]]==1
-#   #| bd[[code9]]==1
-#   ,1,
-#   ifelse(bd[[fieldInterview]]==0 & 
-#     bd[[code1]]==0 &
-#     bd[[code2]]==0 &
-#    # bd[[code3]]==0 &
-#    # bd[[code4]]==0 &
-#     bd[[code5]]==0 &
-#     bd[[code6]]==0 &
-#     bd[[code7]]==0 &
-#     bd[[code8]]==0  
-#      #& bd[[code9]]==0
-#      \,0,NA))]
+#DVT
+code1=grep(x=names(bd),pattern=(paste0("^f\\.6152\\.0_code5")),value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern=(paste0("^f\\.20002\\.0_dxCode1094")),value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",)))))
+#code4=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",)))))
+code3=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I801")))
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code4=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I802")))
+code4=ifelse(length(code4)==0,"zeroColumn",code4)
+#code7=names(select(bd,c(starts_with(paste0("HES_p_",)))))
+#code8=names(select(bd,c(starts_with(paste0("HES_p_",)))))
+#code9=names(select(bd,c(starts_with(paste0("f.6152_code5",)))))
+group="dvt"
+bd[, map3way_f6152_code5_intCode1094_hesCode_1801_1802_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0,0,NA))]
 
+#emphysema_bronchitis
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code6",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1113",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_J41",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J42",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code6_intCode1113_1412_1472_hesCode_J41_J42_J43_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0& bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#pulmonary_embolism
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code7",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1093",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_I26",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_J42",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+# code7=ifelse(length(code7)==0,"zeroColumn",code7)
+# code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code7_intCode1093_hesCode_I26_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#asthma
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code8",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1111",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_J45",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J46",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+#code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+#code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="f\\.22127\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code8_intCode1111_hesCode_J45_J46_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+
+#hay_fever_eczema
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code9",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1387",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1452",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_L20",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J30",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+#code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+#code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="f\\.22126\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code9_intCode1387_1452_hesCode_L20_J30_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+
+#myocardial_infarction
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code1",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1075",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_I21",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+#code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+#code7=ifelse(length(code7)==0,"zeroColumn",code7)
+#code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+#code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code1_intCode1075_hesCode_I21_I22_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0,0,NA))]
+
+#angina
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code2",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1074",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_I20",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+#code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
+#code6=ifelse(length(code6)==0,"zeroColumn",code6)
+#code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+#code7=ifelse(length(code7)==0,"zeroColumn",code7)
+#code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+#code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code2_intCode1074_hesCode_I20_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#stroke
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code3",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1081",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_I60",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I61",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_I62",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="HES_p_I63",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code3_intCode1081_hesCode_I60_I61_I62_I63_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#hypertension
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code4",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1065",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1072",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_I10",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I11",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_I12",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="HES_p_I13",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code4_intCode1065_1072_hesCode_I10_I11_I12_I13_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#gestational_diabetes
+code1=grep(x=names(bd),pattern="^f\\.4041\\.0",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1221",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+#code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+#code3=ifelse(length(code3)==0,"zeroColumn",code3)
+#code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+#code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_4or5_char_p_O244",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+#code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
+#code6=ifelse(length(code6)==0,"zeroColumn",code6)
+#code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+#code7=ifelse(length(code7)==0,"zeroColumn",code7)
+#code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+#code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f4041_intCode1221_hesCode_O244_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#Cancer
+#created a new variable for 40009 where I replaced NAs with 0s, as subjects without a cancer diagnosis do not contribute to the column(e.g. they are NAs)
+bd[,temp400009:= ifelse(is.na(f.40009.0.0_f_QUANT_Reported_occurrences_of_cancer),0,f.40009.0.0_f_QUANT_Reported_occurrences_of_cancer)]
+code1="temp400009"
+#Sum up the number of self reported cancers from the nurses interview data that was converted to wide format for all cancers
+bd$cancerSelfSummed=apply(select(bd,starts_with("f.20001.0_DX")),1,sum,na.rm=T)
+code2="cancerSelfSummed"
+code3=grep(x=names(bd),pattern="^f\\.2453\\.0",value=TRUE)
+#I did not include the conditional zero column statements above as all of these columns are present
+bd[, map3way_f2453_intCodeAllCancersSummed_f40009_BIN_cancer_group_oncology:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
 
 ######################################################################################################################################
 #Remove all special characters besides underscores
