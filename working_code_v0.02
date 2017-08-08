@@ -3034,6 +3034,7 @@ code3=grep(x=names(bd),pattern="^f\\.2453\\.0",value=TRUE)
 bd[, map3way_f2453_intCodeAllCancersSummed_f40009_BIN_cancer_group_oncology:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
 
 ######################################################################################################################################
+
 #Remove all special characters besides underscores
 names(bd)=gsub("[[:punct:]]", "_",names(bd))
 names(bd)=gsub(" ", "_",names(bd))
@@ -3041,34 +3042,55 @@ names(bd)=gsub("_{1,}", "_",names(bd))
 names(bd)=gsub(" {1,}", "_",names(bd))
 names(bd)=gsub("_$", "",names(bd))
 
-#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-{combineTable<-data.frame(matrix(nrow=2,ncol=2))
-  names(combineTable)=c("remove1","remove2")
-  for (i in names(bd)[grep("BIN",names(bd))]) {
-    tryCatch({
-    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-    #print(i)
- },error=function(e){}) }
-    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-    combineTable <- select(combineTable,contains("BIN"))
-    #print(i)
-    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/BIN.tables.csv")
-  }
+#######################################################################################################################################
+#Special Requests
+#LVEF was left raw
 
-#Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
-quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
-names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/QUANT.tables.csv")
+#LVESVi
+#Define BSA using formula provided by mathias
+bd[,specialRequest_BSA := 0.007184*(f_50_0_0_f_QUANT_Standing_height^0.725)*(f_21002_0_0_f_QUANT_Weight^0.425)]
+#Calculate LVESVi
+bd[,specialRequest_LVESVi := f_22422_2_0_f_QUANT_LV_end_systolic_volume/specialRequest_BSA]
+#Same calculation for LVEDVi
+bd[,specialRequest_LVEDVi := f_22421_2_0_f_QUANT_LV_end_diastolic_volume/specialRequest_BSA]
+#Urine_alb_creat_ratio
+bd[,specialRequest_urine_albumin_creatinine_ratio := f_30500_0_0_f_QUANT_Microalbumin_in_urine/f_30510_0_0_f_QUANT_Creatinine_enzymatic_in_urine]
+#FEV1/FVC ratio
+bd[,specialRequest_FEV1_FVC_ratio := f_20150_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_Best_measure/f_20151_0_0_f_QUANT_Forced_vital_capacity_FVC_Best_measure]
+#Take minimum of SRT which is the better of the 2 ears
+bd$specialRequest_hear_loss_B <- apply(select(bd,c(starts_with("f_20021_"),starts_with("f_20019_0_0"))),1,min,na.rm=T)
+set(bd,i=which(is.infinite(bd[["specialRequest_hear_loss_B"]])),j="specialRequest_hear_loss_B",value=NA)
+# Joint pain
+bd[,specialRequest_joint_pain := ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==1|bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==1,1,ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==0 & bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==0,0,NA))]
 
-print("time to write files:Start")
-proc.time()
-  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="UKB9888.BIN.phenoFile.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="UKB9888.QUANT.phenoFile.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="UKB9888.CAT.phenoFile.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="UKB9888.CAT.phenoFile.txt",sep="\t")
-print("time to write files:Stop")
-proc.time()
+# #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
+# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
+#   names(combineTable)=c("remove1","remove2")
+#   for (i in names(bd)[grep("BIN",names(bd))]) {
+#     tryCatch({
+#     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+#     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+#     #print(i)
+#  },error=function(e){}) }
+#     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+#     combineTable <- select(combineTable,contains("BIN"))
+#     #print(i)
+#     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/BIN.tables.csv")
+#   }
+
+# #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
+# quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
+# names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
+# write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/QUANT.tables.csv")
+
+# print("time to write files:Start")
+# proc.time()
+#   write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="UKB9888.BIN.phenoFile.txt",sep="\t")
+#   write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="UKB9888.QUANT.phenoFile.txt",sep="\t")
+#   write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="UKB9888.CAT.phenoFile.txt",sep="\t")
+#   write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="UKB9888.CAT.phenoFile.txt",sep="\t")
+# print("time to write files:Stop")
+# proc.time()
 
 #plotting variables
 #just40008[,c(1:12)] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave("test2.pdf",,width=10,height=20,paper='special')
