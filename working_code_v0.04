@@ -603,7 +603,7 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 ########################################################################################################################################
 #Created new pain variable names based on self report using first instance but all arrays
 #Select the subject ID and the relevant field thats needs to be aggregated
-fieldArray=names(select(bd,starts_with(paste0("f.","6159.0","."))))
+fieldArray=names(select(bd,starts_with("f.6159.0.")))
 #justPain <- bd[,c("f.eid",fieldArray),with=FALSE]
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
 #Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
