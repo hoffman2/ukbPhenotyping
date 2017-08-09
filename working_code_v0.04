@@ -156,39 +156,39 @@ print("finished conditional phenotypes")
 ################################################################################################################################333
 #Following are coded in manually;if we change naming scheme this needs to be updated
 #Take maximum of field 46 
-bd$f.46_f_QUANT_grip_strength_maximumValue <- apply(select(bd,starts_with("f.46.")),1,max,na.rm=T)
+bd[,f.46_f_QUANT_grip_strength_maximumValue := apply(select(bd,starts_with("f.46.")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.46_f_QUANT_grip_strength_maximumValue"]])),j="f.46_f_QUANT_grip_strength_maximumValue",value=NA)
 
 #Take maximum of field 47
-bd$f.47_f_QUANT_grip_strength_maximumValue <- apply(select(bd,starts_with("f.47.")),1,max,na.rm=T)
+bd[,f.47_f_QUANT_grip_strength_maximumValue := apply(select(bd,starts_with("f.47.")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.47_f_QUANT_grip_strength_maximumValue"]])),j="f.47_f_QUANT_grip_strength_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3062
-bd$f.3062.0_f_QUANT_FVC_maximumValue <- apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)
+bd[,f.3062.0_f_QUANT_FVC_maximumValue := apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3062.0_f_QUANT_FVC_maximumValue"]])),j="f.3062.0_f_QUANT_FVC_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3063
-bd$f.3063.0_f_QUANT_FEV1_maximumValue <- apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)
+bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3064
-bd$f.3064.0_f_QUANT_PEF_maximumValue <- apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)
+bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
 
 #Mean of dystolic blood pressure Field 4079
-bd$f.4079.0_f_QUANT_Diastolic_blood_pressure_mean=apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)
+bd[,f.4079.0_f_QUANT_Diastolic_blood_pressure_mean := apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)]
 set(bd,i=which(is.na(bd[["f.4079.0_f_QUANT_Diastolic_blood_pressure_mean"]])),j="f.4079.0_f_QUANT_Diastolic_blood_pressure_mean",value=NA)
 
 #Mean of systolic blood pressure Field 4080
-bd$f.4080.0_f_QUANT_systolic_blood_pressure_mean=apply(select(bd,starts_with("f.4080.0")),1,mean,na.rm=T)
+bd[,f.4080.0_f_QUANT_systolic_blood_pressure_mean := apply(select(bd,starts_with("f.4080.0")),1,mean,na.rm=T)]
 set(bd,i=which(is.na(bd[["f.4080.0_f_QUANT_systolic_blood_pressure_mean"]])),j="f.4080.0_f_QUANT_systolic_blood_pressure_mean",value=NA)
 
 #Take Minimum of field 102
-bd$f.102.0_f_QUANT_pulse_minimumValue=apply(select(bd,starts_with("f.102.0")),1,mean,na.rm=T)
+bd[,f.102.0_f_QUANT_pulse_minimumValue := apply(select(bd,starts_with("f.102.0")),1,mean,na.rm=T)]
 set(bd,i=which(is.na(bd[["f.102.0_f_QUANT_pulse_minimumValue"]])),j="f.102.0_f_QUANT_pulse_minimumValue",value=NA)
 
 #Take total of all elements in first instance Field 399
-bd$f.399.0_f_QUANT_incorect_matches_summed=apply(select(bd,starts_with("f.399.0")),1,sum,na.rm=T)
+bd[,f.399.0_f_QUANT_incorect_matches_summed := apply(select(bd,starts_with("f.399.0")),1,sum,na.rm=T)]
 set(bd,i=which(is.na(bd[["f.399.0_f_QUANT_incorect_matches_summed"]])),j="f.399.0_f_QUANT_incorect_matches_summed",value=NA)
 
 print("finished columns that require calculations")
@@ -3105,13 +3105,13 @@ bd[,"f_6158_0_0_f_BIN_Why_reduced_smoking" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/BIN.tables.csv")
+    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/UKB9888.BIN.tables.csv")
   }
 
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/QUANT.tables.csv")
+write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/UKB9888.QUANT.tables.csv")
 
 print("time to write files:Start")
 proc.time()
@@ -3119,6 +3119,7 @@ proc.time()
   write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="UKB9888.QUANT.phenoFile.txt",sep="\t")
   write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="UKB9888.CAT.phenoFile.txt",sep="\t")
   write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="UKB9888.phenoFile.txt",sep="\t")
+  write.table(names(bd),row.names=F,file="UKB9888.fieldNames.txt",sep="\t")
 print("time to write files:Stop")
 proc.time()
 
