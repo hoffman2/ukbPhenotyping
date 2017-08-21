@@ -1917,7 +1917,7 @@ for(i in seq_along(twoWayMapping4or5$V1)) {
 #####################################################################################################################################
 #Create new set of variables based on HES block coding(See HES Ontology)
 #Read in HES Ontology
-hesOntology <- read.table("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
+hesOntology <- fread("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
 #Remove all special characters besides underscores
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntology[[i]])}
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
@@ -1925,7 +1925,7 @@ for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_{1,}","_",hesOntology[[i]]
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_$","",hesOntology[[i]])}
 
 
-#Create a variable for each block, settin geveryone initially as a control
+#Create a variable for each block, setting geveryone initially as a control
 for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {bd[,paste0("HES_block_p_",blockHES,"_BIN") := 0]}
 #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
 for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){finalCode=paste0("HES_block_p_",blockHES,"_BIN");set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_block_p_",blockHES,"_BIN"), value=1)}}
@@ -1933,6 +1933,14 @@ for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {phenoList=hesO
 for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {bd[,paste0("HES_chapter_p_",chapterHES,"_BIN") := 0]}
 for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){finalCode=paste0("HES_chapter_p_",chapterHES,"_BIN");set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_chapter_p_",chapterHES,"_BIN"), value=1)}}
 
+# #Do the same thing for the cancer registry data
+# #Create a variable for each block, settin geveryone initially as a control
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {bd[,paste0("f_40006_block_",blockHES,"_BIN") := 0]}
+# #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){finalCode=paste0("f_40006_block_",blockHES,"_BIN");set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
+# #Chapter variable
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {bd[,paste0("f_40006_chapter_",chapterHES,"_BIN") := 0]}
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){finalCode=paste0("f_40006_chapter_",chapterHES,"_BIN");set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_chapter_",chapterHES,"_BIN"), value=1)}}
 
 #####################################################################################################################################
 # #Tabulate two mapping data
@@ -2152,6 +2160,7 @@ bd[,fev1_pred_exclude:= ifelse(f_2316_0_0_f_BIN_Wheeze_or_whistling_in_the_chest
 #Run regression model to get pred FEV1 using only subjects that did not meet exclusionary criteria set aboved
 fev1.pred=lm(data=bd[fev1_pred_exclude==0,],f_3063_0_f_QUANT_FEV1_maximumValue~f_21003_0_0_f_QUANT_Age_when_attended_assessment_centre+f_31_0_0_f_BIN_Sex+f_50_0_0_f_QUANT_Standing_height,na.action=na.exclude)
 #Create a new variable for the predicted values
+bd[, specialRequest_QUANT_FEV1_pred := NA]
 bd[, specialRequest_QUANT_FEV1_pred := as.double(specialRequest_QUANT_FEV1_pred)]
 #Using the coefficients from the linear model, predict FEV1 in the entire cohort.
 bd[,specialRequest_QUANT_FEV1_pred := predict(fev1.pred,bd)]
@@ -2163,14 +2172,13 @@ bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_
 
 #Osteoarthiritis based on self report or HES
 #Fix 2 way mapping based on discussion with Robert Scott
-HES_block_p_M15_M19_Arthrosis_BIN
 bd[,map2way3char_intCode1465_hesCodeM19_BIN_osteoarthritis:=NULL]
 fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1465")),value=TRUE)
 fieldHES="HES_block_p_M15_M19_Arthrosis_BIN"
 bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 #Create osteo special request variable
 bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis==1,1,
-  ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA))]
+  ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
 
 #Remove a couple of the columns that I recoded into wide format but that are still in the data frame
 bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
@@ -2195,15 +2203,15 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08162017.csv")
+write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08252017.csv")
 
 print("time to write files:Start")
 proc.time()
-  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08172017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08172017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08172017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08172017.txt",sep="\t")
-  write.table(names(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08172017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08252017.txt",sep="\t")
+  write.table(names(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08252017.txt",sep="\t")
 print("time to write files:Stop")
 proc.time()
 
