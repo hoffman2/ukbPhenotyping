@@ -1,0 +1,2259 @@
+library(tidyverse)
+library(data.table)
+#Necessary for combining tables of different lengths
+library(gdata)
+#All fields and subjects
+print("time to read in full pheWas table:Start")
+print(proc.time())
+bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", header=TRUE, sep="\t")
+print("Done reading in file")
+print(proc.time())
+#bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
+dataDictionary <- fread("/home/jh137539/ukb/dataCoding/Data_Dictionary_Showcase.csv",header = T)
+dataCoding <- fread("/home/jh137539/ukb/dataCoding/Codings_Showcase.csv")
+phewasDefinition <- fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+phewasDefinition$PHENOTYPE=gsub("[[:punct:]]", "_",phewasDefinition$PHENOTYPE)
+phewasDefinition$PHENOTYPE=gsub(" {1,}", "_",phewasDefinition$PHENOTYPE)
+phewasDefinition$PHENOTYPE=gsub("_{1,}", "_",phewasDefinition$PHENOTYPE)
+phewasDefinition$PHENOTYPE=gsub("_$", "",phewasDefinition$PHENOTYPE)
+#Some of the names have commas and other special characters which are problematic in R so I replaced them
+phewasDefinition$PHENOTYPE=gsub("[[:punct:]]", "_",phewasDefinition$PHENOTYPE)
+names(dataCoding)[2:3]=c("V1","V2")
+dataCoding$V2=gsub("[[:punct:]]", "_",dataCoding$V2)
+dataCoding$V2=gsub(" ", "_",dataCoding$V2)
+dataCoding$V2=gsub(" {1,}", "_",dataCoding$V2)
+dataCoding$V2=gsub("_{1,}", "_",dataCoding$V2)
+dataCoding$V2=gsub("_$", "",dataCoding$V2)
+#Load in the fields that we are planning on keeping for the first set of analyses(Need to also make sure that the "f.eid" is included)
+priorityFieldList <- fread("/home/jh137539/ukb/benchmarking/codeTesting/priorityFieldList.ls", header=FALSE, sep="\t")
+#Find all the instances and arrays for the priority set
+{finalList=NULL;for(i in seq_along(priorityFieldList$V1)){keepSet=grep(names(bd),pattern=paste0("f.",priorityFieldList$V1[i],"\\."),value=T)
+  finalList=c(finalList,keepSet);finalList}
+    finalList=c("f.eid",finalList)}
+#Keep all instances and arrays of the prioritized columns
+bd<-bd[,(finalList),with=FALSE]
+#At this stage we can either save a new phenotype file with just these columns to be used for further coding, or just do these steps in-place
+#When reading file in we get some warnings about column classes. In these situations we are left with a mixture of blank cells and NAs
+#A current work around is to set all blank cells to NA
+#If we run into additional issues we may have to manually set the column classes that give us warning ( warnings >50)
+for (i in seq_along(bd)) set(bd, i=which(bd[[i]]==""), j=i, value=NA)
+print("Reduced to priority fields and set empty elements to NA")
+print(proc.time())
+#Since the field description has special characters I am removing them as they disrupt fut#Instead of applying global recoding of missing values, I created individual field lists that had the specific missing values present 
+#and only changed those, code-by-code
+dataCodingWithNeg5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg5Missing.ls",header = F)
+dataCodingWithNeg3 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg3Missing.ls",header = F)
+dataCodingWithNeg2 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg2Missing.ls",header = F)
+dataCodingWithNeg1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg1Missing.ls",header = F)
+#Recode binary phenotypes to coding rules assigned by RS and JH
+
+#Recode 90; Never,Past,Current(Coded past and current as 1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "90"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)}
+
+#100345; Original coded as 2 for no and 1 for yes. I switched the order (0=No,1=Yes)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100345"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=0)}
+
+#Recode; 100500 (11=0,12=1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100500"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=1)}
+
+#Recode 100550; (1=0,2=1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100550"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)}
+
+#Recode 100579; (2=NA,3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100579"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=NA)}
+
+#Recode 100347; (0=0,1=1,2=1,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100347"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode 100370; (0=0,1=1,2=1,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100370"]$FieldID){
+ # fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode 100291; (0=0,1=1,2=1,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100291"]$FieldID){
+ # fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+
+#Recode 100631 (99=1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100631"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==99), j=field, value=1)}
+
+#Recode 18; (1=0,2=1,0=2)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "18"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0), j=field, value=3)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=2)}
+
+#Recode fields with code 27
+for(currentField in dataDictionary[dataDictionary$Coding %in% "27"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=NA)}
+
+#Code 36
+for(currentField in dataDictionary[dataDictionary$Coding %in% "36"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=NA)}
+
+print("Finished coding standard binary fields")
+
+#Condition value on a passing measurement
+bd[,f.22672.0.0:=ifelse(f.22682.0.0==2,NA,f.22672.0.0)]
+bd[,f.22675.0.0:=ifelse(f.22683.0.0==2,NA,f.22675.0.0)]
+bd[,f.22678.0.0:=ifelse(f.22684.0.0==2,NA,f.22678.0.0)]
+bd[,f.22681.0.0:=ifelse(f.22685.0.0==2,NA,f.22681.0.0)]
+bd[,f.22671.0.0:=ifelse(f.22682.0.0==2,NA,f.22671.0.0)]
+bd[,f.22674.0.0:=ifelse(f.22683.0.0==2,NA,f.22674.0.0)]
+bd[,f.22677.0.0:=ifelse(f.22684.0.0==2,NA,f.22677.0.0)]
+bd[,f.22680.0.0:=ifelse(f.22685.0.0==2,NA,f.22680.0.0)]
+bd[,f.22670.0.0:=ifelse(f.22682.0.0==2,NA,f.22670.0.0)]
+bd[,f.22673.0.0:=ifelse(f.22683.0.0==2,NA,f.22673.0.0)]
+bd[,f.22676.0.0:=ifelse(f.22684.0.0==2,NA,f.22676.0.0)]
+bd[,f.22679.0.0:=ifelse(f.22685.0.0==2,NA,f.22679.0.0)]
+
+#Convert when the value of 100580 is yes for any instance
+bd[,f.100022.0.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.0.0,NA)]
+bd[,f.100022.1.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.1.0,NA)]
+bd[,f.100022.2.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.2.0,NA)]
+bd[,f.100022.3.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.3.0,NA)]
+bd[,f.100022.4.0:=ifelse(f.100580.0.0==1|f.100580.1.0==1|f.100580.2.0==1|f.100580.3.0==1|f.100580.4.0==1,f.100022.4.0,NA)]
+print("finished conditional phenotypes")
+
+################################################################################################################################333
+#Following are coded in manually;if we change naming scheme this needs to be updated
+#In the code below we get warnings due to certain rows of values having NAs for both values of the evaluation, to fix this I added a second statement to convert these from infinite to NA
+
+#Take maximum of field 46 
+bd[,f.46_f_QUANT_grip_strength_maximumValue := apply(select(bd,starts_with("f.46.")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.46_f_QUANT_grip_strength_maximumValue"]])),j="f.46_f_QUANT_grip_strength_maximumValue",value=NA)
+
+#Take maximum of field 47
+bd[,f.47_f_QUANT_grip_strength_maximumValue := apply(select(bd,starts_with("f.47.")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.47_f_QUANT_grip_strength_maximumValue"]])),j="f.47_f_QUANT_grip_strength_maximumValue",value=NA)
+
+#Take maximum from the combined left and right hand
+bd[,f.47_f_QUANT_grip_strength_maximumValue := apply(select(bd,f.46_f_QUANT_grip_strength_maximumValue,f.47_f_QUANT_grip_strength_maximumValue),1,max,na.rm=T)]
+
+
+#Take maximum of first instance Field 3062 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
+#Also included 20152 which dewfined reproducibility of best measure
+bd[,f.3062.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3062.0.0,NA)]
+bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3062.0.1,NA)]
+bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3062.0.2,NA)]
+bd[,f.3062.0_f_QUANT_FVC_maximumValue := apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.3062.0_f_QUANT_FVC_maximumValue"]])),j="f.3062.0_f_QUANT_FVC_maximumValue",value=NA)
+
+#Take maximum of first instance Field 3063 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
+#Also included 20152 which dewfined reproducibility of best measure
+bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3063.0.0,NA)]
+bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3063.0.1,NA)]
+bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3063.0.2,NA)]
+bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
+
+#Take maximum of first instance Field 3064
+bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
+
+#Mean of dystolic blood pressure Field 4079
+bd[,f.4079.0_f_QUANT_Diastolic_blood_pressure_mean := apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)]
+set(bd,i=which(is.na(bd[["f.4079.0_f_QUANT_Diastolic_blood_pressure_mean"]])),j="f.4079.0_f_QUANT_Diastolic_blood_pressure_mean",value=NA)
+
+#Mean of systolic blood pressure Field 4080
+bd[,f.4080.0_f_QUANT_systolic_blood_pressure_mean := apply(select(bd,starts_with("f.4080.0")),1,mean,na.rm=T)]
+set(bd,i=which(is.na(bd[["f.4080.0_f_QUANT_systolic_blood_pressure_mean"]])),j="f.4080.0_f_QUANT_systolic_blood_pressure_mean",value=NA)
+
+#Take Minimum of field 102
+bd[,f.102.0_f_QUANT_pulse_minimumValue := apply(select(bd,starts_with("f.102.0")),1,mean,na.rm=T)]
+set(bd,i=which(is.na(bd[["f.102.0_f_QUANT_pulse_minimumValue"]])),j="f.102.0_f_QUANT_pulse_minimumValue",value=NA)
+
+#Take total of all elements in first instance Field 399
+bd[,f.399.0_f_QUANT_incorect_matches_summed := apply(select(bd,starts_with("f.399.0")),1,sum,na.rm=T)]
+set(bd,i=which(is.na(bd[["f.399.0_f_QUANT_incorect_matches_summed"]])),j="f.399.0_f_QUANT_incorect_matches_summed",value=NA)
+
+print("finished columns that require calculations")
+
+#Take first value present for field 100580
+bd[,f.100580_f_BIN_alchohol_consumed_first_complete_value:=ifelse(!is.na(f.100580.0.0),f.100580.0.0,ifelse(!is.na(f.100580.1.0),f.100580.1.0,ifelse(!is.na(f.100580.2.0),f.100580.2.0,ifelse(!is.na(f.100580.3.0),f.100580.3.0,ifelse(!is.na(f.100580.4.0),f.100580.4.0,NA)))))]
+
+#Take first value present for field 100002
+bd[,f.100002_f_QUANT_energy_first_complete_value:=ifelse(!is.na(f.100002.0.0),f.100002.0.0,ifelse(!is.na(f.100002.1.0),f.100002.1.0,ifelse(!is.na(f.100002.2.0),f.100002.2.0,ifelse(!is.na(f.100002.3.0),f.100002.3.0,ifelse(!is.na(f.100002.4.0),f.100002.4.0,NA)))))]
+
+#Take first value present for 100022
+bd[,f.100022_f_QUANT_alchohol_intake_first_complete_value:=ifelse(!is.na(f.100022.0.0),f.100022.0.0,ifelse(!is.na(f.100022.1.0),f.100022.1.0,ifelse(!is.na(f.100022.2.0),f.100022.2.0,ifelse(!is.na(f.100022.3.0),f.100022.3.0,ifelse(!is.na(f.100022.4.0),f.100022.4.0,NA)))))]
+
+#Aggregation of field code 40000 (Death Date converted to yes/no) (No age attached)
+bd[,f.40000_f_BIN_DIED := ifelse(!is.na(f.40000.0.0)|!is.na(f.40000.1.0)|!is.na(f.40000.2.0),1,0)]
+
+#Recode 3mm code-33 fields
+code33Fields=c("5155","5149","5164","5152")
+for(currentField in code33Fields){
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="1"), j=field, value=0)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="3"), j=field, value=1)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="2"), j=field, value=NA)}
+
+#Recode hearing loss(4=0,13=1,12=2,11=3)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","4814","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="4"), j=field, value=0)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="13"), j=field, value=1)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="12"), j=field, value=2)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="11"), j=field, value=3)
+
+#Recode additional missingess for job happiness(7=NA)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","4537","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="7"), j=field, value=NA)
+
+#Recode birth weight of first child,set "only have twins" to NA(-2=NA)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","2744","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="-2"), j=field, value=NA)
+
+#Recode length of menstrual cycle(-6=NA)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","3710","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="-6"), j=field, value=NA)
+
+#Recode smoking status (-818=NA)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","22506","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==-818), j=field, value=NA)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==111|bd[[field]]==112|bd[[field]]==113), j=field, value=1)
+for(field in fieldArray) set(bd, i=which(bd[[field]]==114), j=field, value=0)
+
+#set missing for field 51814(no data coding present for this field)
+fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.","51814","\\.")),value=TRUE)
+for(field in fieldArray) set(bd, i=which(bd[[field]]=="-1"), j=field, value=NA)
+
+#Recode fields with 100291(0=0,1=1,2=1,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "90"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Field:41214 (99=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "227"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==99), j=field, value=NA)}
+
+#Recode Field:41218 (8=NA,9=NA,2=1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "229"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==8), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==9), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)}
+
+#Recode Data-code 230 (2=1,3=1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "230"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=1)}
+
+#Recode Data-code 100349 (-1=NA,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100349"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100352 (-3=NA) #I identified an issue after tabulating data where some subjcts had a "-1" which is not part of original data coding, these will be set to missing
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100352"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100356 (-1=NA,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100356"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100357 (-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100357"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100358 (-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100358"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100359 (-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100359"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3|bd[[field]]==4), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100360 (-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100360"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data-code 100369 (-1=NA,-3=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100369"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3|bd[[field]]==4), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==2), j=field, value=1)}
+
+#Recode Data-code 100668 (-1=NA)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100668"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)}
+
+#Recode Data-code 100353 (-1=NA,-10=0.5 (less than one cig per day));requires converting field to double since we are using 0.5
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100353"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) bd[[field]]=as.double(bd[[field]])
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)}
+
+#Recode Data-code 100355 (-1=NA,-10=0.5 (less than one per day));requires converting field to double since we are using 0.5
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100355"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) bd[[field]]=as.double(bd[[field]])
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)}
+
+#Recode Data-code 5540 (-1=NA,-3=NA (less than one per day));requires converting field to double since we are using 0.5
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100552"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=1)}
+
+#Recode Data code 946
+for(currentField in dataDictionary[dataDictionary$Coding %in% "946"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1001), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-818), j=field, value=NA)}
+
+#Recode Data code 100595
+#If subject has -11(still taking pill) than replace value with age of initial assessment
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100595"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-11), j=field, value=bd[bd[[field]]==-11,f.21022.0.0])}
+
+#Recode Data code 100598
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100598"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-11), j=field, value=bd[bd[[field]]==-11,f.21022.0.0])}
+
+#Recode Data code 100598
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100599"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3|bd[[field]]==-5), j=field, value=NA)}
+
+#Recode Data code 100586
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100586"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-4), j=field, value=NA)}
+
+#Recode Data code 100343
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100343"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#Recode Data code 100539
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100539"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+  #Recode Data code 272
+for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=field, value=NA)}
+
+#402
+for(currentField in dataDictionary[dataDictionary$Coding %in% "402"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0), j=field, value=NA)}
+
+#401
+for(currentField in dataDictionary[dataDictionary$Coding %in% "401"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==1|bd[[field]]==2|bd[[field]]==3), j=field, value=1)}
+
+#479
+for(currentField in dataDictionary[dataDictionary$Coding %in% "479"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==2), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==3), j=field, value=1)}
+
+#470
+for(currentField in dataDictionary[dataDictionary$Coding %in% "470"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==6|bd[[field]]==7), j=field, value=NA)}
+
+#498
+for(currentField in dataDictionary[dataDictionary$Coding %in% "498"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=0)}
+
+#1002
+for(currentField in dataDictionary[dataDictionary$Coding %in% "1002"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(is.na(bd[[field]])), j=field, value=0)}
+
+#1101
+for(currentField in dataDictionary[dataDictionary$Coding %in% "1101"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(is.na(bd[[field]])), j=field, value=0)}
+
+#100260
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100260"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==6|bd[[field]]==7|bd[[field]]==3), j=field, value=NA)}
+
+#100263
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100263"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==6|bd[[field]]==7), j=field, value=NA)}
+
+#100267
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100267"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=NA)}
+
+#100271
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100271"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=NA)}
+
+#100272
+#The fields related to this data code deals with eye information. We decided to recode 0 has neither eyes and 1 for either one or 2 eyes
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100272"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2|bd[[field]]==3|bd[[field]]==4), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==5), j=field, value=NA)}
+
+#100273
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100273"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2|bd[[field]]==3|bd[[field]]==4), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==4), j=field, value=2)}
+
+#100274
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100273"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100301
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100301"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1), j=field, value=0)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100416
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100416"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-6|bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100511
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100511"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==2|bd[[field]]==3), j=field, value=1)}
+
+#100567
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100567"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)}
+
+#100569
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-10), j=field, value=0.5)}
+
+#100348
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100348"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
+#100569
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=3)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=2)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100637
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100637"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=3)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=2)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100699
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100699"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==1|bd[[field]]==99), j=field, value=1)}
+
+#224
+for(currentField in dataDictionary[dataDictionary$Coding %in% "224"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==3|bd[[field]]==9), j=field, value=NA)}
+
+print("finished another round of recoding")
+
+########################################################################################################################################
+
+print("reformat categorical fields into wide binary wide format")
+#Model qualifications as a binary phenotype of college versus none
+#Although -7 is used to specify non ove the above, I decided that these subjects should be set to missing as -7 doesnt seem to properly fit in(Discuss further....) 
+#Select the subject ID and the relevant field thats needs to be aggregated
+fieldArray=names(select(bd,c(starts_with("f.6138.0"),starts_with("f.6138.0"))))
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-7), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+#Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
+fieldLong = melt(justFields, measure = patterns("^f.6138"), variable.name="arbField",value.name = c("dxField"))
+#Create a new variable for the binary phenotyping of the individual data codes
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+fieldLong[,DX:=ifelse(dxField=="1",1,ifelse(dxField!=1&dxField!="NA",0,NA))]
+fieldLong[,"arbField":=NULL]
+#Remove duplicate rows priortizing college/university degrees answers for each subject
+fieldLong <- fieldLong[order(c(-f.eid,-DX)),][!duplicated(f.eid),][!is.na(f.eid),]
+fieldLong[,"dxField":=NULL]
+names(fieldLong)[2]="f.6138.0_f_BIN_Qualifications"
+fieldWide<-fieldLong
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Created new pain variable names based on self report using first instance but all arrays
+#Select the subject ID and the relevant field thats needs to be aggregated
+fieldArray=names(select(bd,starts_with("f.6159.0.")))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+#Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
+fieldLong = melt(justFields, measure = patterns("^f.6159.0."), variable.name="arbField",value.name = c("dxField"))
+#Create a new variable for the binary phenotyping of the individual data codes
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+#For any code >0 assign caseCode a value of 1
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#-7 is the value of "none of the above"; code as such
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+#Recode missing values as -9
+set(fieldLong, i=which(fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+#remove the field column as no longer relevant
+fieldLong[,"arbField":=NULL]
+#Remove duplicate rows using the subject ID and the original code as the key
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+#Convert data from long to wide format based on the codes. The elements of each column and row will be the values of the "DX column"
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+#Convert all of the NA's in the table to 0s. As these subjects did not select that particular code. We are making the assumption that they can be coded as a control.
+fieldWide[is.na(fieldWide)]=0
+#For subjects that were  coded as missing(-9), convert all of their rows to NA
+fieldWide[fieldWide$`-9`==-9,c(2:ncol(fieldWide))]=NA
+#Remove the columns that are by-products of the coding
+fieldWide[,c("-9","NA","0"):=NULL]
+#Read in a file that has the pain code definitions in the same order as the columns
+#Need to update this to first find the code definitions column and then column code
+#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/painForRename.ls", header=FALSE, sep="\t")
+fieldNames <- dataCoding[Coding=="100553",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+#Create the abbreviated names list
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+#names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+#fieldNames$V1=paste0("code",fieldNames$V1)
+#Create the abbreviated names list
+#fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+#fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+#Replace names
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6159",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+#Make a list of the derived variables and output to file(to do)
+#Join these new columns to data.table and replace previous version
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+print("number of rows at this point")
+nrow(bd)
+########################################################################################################################################
+
+#Coding self reported cancer and age at dx, as well as interpolated year
+#Select the subject ID and the relevant field thats needs to be aggregated
+fieldArray=names(select(bd,c(starts_with("f.20007.0"),starts_with("f.20001.0"),starts_with("f.20006.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+#Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
+#In this case we want to have the corresponding year and age attached to the DX so using both fields as our measure
+fieldLong = melt(justFields, measure = patterns("^f.20007.", "^f.20001.","^f.20006."), variable.name="arbField",value.name = c("dxAge","dxField","dxYear"))
+#Create a new variable for the binary phenotyping of the individual data codes
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+#For any code > 0 assign caseCode a value of 1
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#remove the field column as no longer relevant
+fieldLong[,"arbField":=NULL]
+#Remove duplicate columns using the subject ID,and cancerDX codes as the key
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+#One person had lung cancer diagnosed twice, thus one instance removed due to limitations of melt function((doesnt allow dupes))
+#Convert data from long to wide format based on the cancer codes. Will now have columns labeled feid,-9,1-8,NA
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX","dxYear"))
+#Remove the NA columns 
+fieldWide[,c("dxAge_NA","DX_NA","dxYear_NA"):=NULL]
+#Convert all of the cancerDX NA's in the table to 0s, leave the dxAges alone(leave NA if already NA)
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#Use the data coding file to assign names to the wide formatted vairables
+fieldNames <- dataCoding[Coding=="3",]
+names(fieldNames)[2:3]=c("V1","V2")
+#Remove special characters from the field descriptions and replace with a "_"
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+#Replace names
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20007.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxYear",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20006.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20001.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+#Join these new columns to data.table and replace previous version
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Self Reported non-cancer illness codes and interpolated ages
+fieldArray=names(select(bd,c(starts_with("f.20009.0"),starts_with("f.20002.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20009", "^f.20002."), variable.name="arbField",value.name = c("dxAge","dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX"))
+fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldNames <- dataCoding[Coding=="6",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20009.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20002.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+names(fieldWide)=gsub("DX_","dxCode",names(fieldWide))
+names(fieldWide)=gsub("dxAge_","dxAgeCode",names(fieldWide))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6147
+fieldArray=names(select(bd,c(starts_with("f.6147.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6147.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9"):=NULL]
+fieldNames <- dataCoding[Coding=="100514",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+#For variables that we are not attaching ages to, we need to add in a text prefix to the variable name. Having value based names can be problematic in R
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6147.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 2877(No age attached): type of tobacco previously smoked
+fieldArray=names(select(bd,c(starts_with("f.2877.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.2877.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100351",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.2877.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6157(No age attached): Why stopped smoking
+fieldArray=names(select(bd,c(starts_with("f.6157.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6157.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100361",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6157.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6158(No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6158.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6158.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100361",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6158.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#Recode 20084: Vitamin and/or mineral supplement use
+fieldArray=names(select(bd,c(starts_with("f.20084.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20084.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#No option to select I dont know or prefer not to answer
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[,c("NA"):=NULL]
+fieldNames <- dataCoding[Coding=="74",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20084.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Recode 20086:  Type of special diet followed
+fieldArray=names(select(bd,c(starts_with("f.20086.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20086.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#No option to select I dont know or prefer not to answer
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[,c("NA"):=NULL]
+fieldNames <- dataCoding[Coding=="76",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20086.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 21000(No age attached): Ethnicity
+fieldArray=names(select(bd,c(starts_with("f.21000.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.21000.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9"):=NULL]
+fieldNames <- dataCoding[Coding=="1001",]
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.21000.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 3446(No age attached): type of toacco currently smoking
+fieldArray=names(select(bd,c(starts_with("f.3446.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.3446.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("DX","dxField"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100351",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.3446.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6148 (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6148.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6148.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100523",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6148.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#Aggregation of field code 6149 (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6149.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6149.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100538",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6149.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#Aggregation of field code 6150 (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6150.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6150.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100605",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6150.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#Aggregation of field code 6151 (No age attached)
+
+#Select the subject ID and the relevant field thats needs to be aggregated
+fieldArray=names(select(bd,c(starts_with("f.6151.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6151.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9"):=NULL]
+fieldNames <- dataCoding[Coding=="100622",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6151.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6152 (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6152.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6152.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100610",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6152.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6153 (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.6153.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6153.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100626",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6153.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6154 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.6154.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6154.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100628",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6154.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6155 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.6155.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6155.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100629",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6155.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6156 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.6156.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6156.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#All the above answer
+fieldWide[fieldWide$`15`=="1",c(2:ncol(fieldWide))]=1
+fieldWide[,c("NA","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100498",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6156.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 1707(No age attached)
+fieldArray=names(select(bd,c(starts_with("f.1707.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.1707.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9"):=NULL]
+fieldNames <- dataCoding[Coding=="100430",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.1707.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6177 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.6177.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6177.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100625",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6177.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 6179 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.6179.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.6179.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100630",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6179.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 41210 (No age attached); these codes are in relation to operative procedures. They are to be coded using the pheWAS code definitions
+operativeProcedures <- fread("/home/jh137539/ukb/dataCoding/coding240.tsv")
+for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub("[[:punct:]]", "_",operativeProcedures[[i]])}
+for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub(" {1,}","_",operativeProcedures[[i]])}
+for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub("_{1,}","_",operativeProcedures[[i]])}
+for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub("_$","",operativeProcedures[[i]])}
+operativeProcedures$diag=paste0("p_",substr(operativeProcedures$coding,1,3))
+operativeProcedures$coding=paste0("p_",operativeProcedures$coding)
+fieldArray=names(select(bd,c(starts_with("f.41210.0"))))
+secondaryArray=names(select(bd,c(starts_with("f.41200.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+justFieldsSecond <- bd[,c("f.eid",secondaryArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.41210.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLongSecond = melt(justFieldsSecond, measure = patterns("^f.41200.0"), variable.name="arbField",value.name = c("dxField"))
+#Combine the primary and secondary diagnisis together
+fieldLong<-rbind(fieldLong,fieldLongSecond)
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(!is.na(fieldLong[["dxField"]])), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+#Reassign operation codes using phwas coding system
+fieldLong$dxField=paste0("p_",substr(fieldLong$dxField,1,3))
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("p_NA"):=NULL]
+#I dont have a step here to import fieldNames as the phewas definitions were imported at the beginning of this script.
+for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.41210_41200.0",currentName,"BIN",filter(operativeProcedures,coding==currentName)["meaning"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 20107 (father illness) (No age attached)
+#This field will be important for perfroming the GWAS by proxy.
+fieldArray=names(select(bd,c(starts_with("f.20107.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20107.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#This is a special set for recoding wide because subjects were asked questions in 2 groups, need to code accordingly
+#Group 1 "dont knows"
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+#Group 2 "dont knows"
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#For subjects that were orignally coded as -1,or-3, convert all of their rows to NA
+#These data were broken down into group one and group 2. Need to apply specific function based on which group the subjects responed "I dont know" to
+#Group 1 : Heart disease, Stroke, High blood pressure, Chronic bronchitis/emphysema, Alzheimer's disease/dementia, Diabetes.
+#Group 2 : Parkinson's disease, Severe Depression, Lung cancer, Bowel cancer, Prostate cancer.
+#Breast cancer was not availble for selection by subjects even though code present in field
+#Starting with group 1 (note that -5 is in both group 1 and group 2, this is breast cancer)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+#Set group1 none of the above
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+#Group2
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+#Set group 2 none of the above
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+#remove arbitrary columns
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 20110 (Mother illness) (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.20110.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20110.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#This is a special set for recoding wide because subjects were asked questions in 2 groups, need to code accordingly
+#Group 1 "dont knows"
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+#Group 2 "dont knows"
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#For subjects that were orignally coded as -1,or-3, convert all of their rows to NA
+#These data were broken down into group one and group 2. Need to apply specific function based on which group the subjects responed "I dont know" to
+#Group 1 : Heart disease, Stroke, High blood pressure, Chronic bronchitis/emphysema, Alzheimer's disease/dementia, Diabetes.
+#Group 2 : Parkinson's disease, Severe Depression, Lung cancer, Bowel cancer, Prostate cancer.
+#Breast cancer was not availble for selection by subjects even though code present in field
+#Starting with group 1 (note that -5 is in both group 1 and group 2, this is breast cancer)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+#Set group1 none of the above
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+#Group2
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+#Set group 2 none of the above
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+#remove arbitrary columns
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20110.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Aggregation of field code 20111 (Sibling illness) (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.20111.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20111.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20111.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+################################################################################################################################
+#Aggregation of field code 20114 (adopted brothers/sisters illness) (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.20114.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20114.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20114.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+
+#Aggregation of field code 20112 (adopted father illness) (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.20112.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20112.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20112.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#Aggregation of field code 20112 (adopted mother illness) (No age attached)
+fieldArray=names(select(bd,c(starts_with("f.20113.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20113.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20113.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Following block is to create a new variable where subject diagnosis is based on whether the mother or father had the disease
+fieldArray=names(select(bd,c(starts_with("f.20110.0."),starts_with("f.20107.0."))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+#Prioritize cases, such that if mother was a case and father was a control, keep the case diagnosis
+fieldLong <- fieldLong[order(f.eid,-DX)]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20111",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Following block is to create a new variable where subject diagnosis is based on whether the siblings, mother or father had the disease
+fieldArray=names(select(bd,c(starts_with("f.20111.0."),starts_with("f.20107.0."),starts_with("f.20110.0."))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[order(f.eid,-DX)]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldNames <- dataCoding[Coding=="1010",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20111_20110.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+
+#Self Reported operation codes
+fieldArray=names(select(bd,c(starts_with("f.20011.0"),starts_with("f.20004.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20011", "^f.20004."), variable.name="arbField",value.name = c("dxAge","dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+#There are subjects with missing ages, need to set these to NA
+set(fieldLong, i=which(fieldLong[["dxAge"]]==-1|fieldLong[["dxAge"]]==-3), j=c("dxAge"), value=NA)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX"))
+fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldNames <- dataCoding[Coding=="5",]
+names(fieldNames)[2:3]=c("V1","V2")
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20011",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20004",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+names(fieldWide)=gsub("DX_","dxCode",names(fieldWide))
+names(fieldWide)=gsub("dxAge_","dxAgeCode",names(fieldWide))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+################################################################
+
+#Recoding of Bipolar Disorder 20126, no age attached
+fieldArray=names(select(bd,starts_with("f.20126.0")))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.20126.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==0), j=c("dxField","DX"), value=0)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[,c("NA","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100695",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20126.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+#Join these new columns to data.table and replace previous version
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+###################################################################################################################
+
+#Aggregation of field code 2395 (No age attached)
+
+fieldArray=names(select(bd,c(starts_with("f.2395.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.2395.0"), variable.name="arbField",value.name = c("dxField"))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-7), j=c("dxField","DX"), value=0)
+set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("NA","-9","0"):=NULL]
+fieldNames <- dataCoding[Coding=="100572",]
+names(fieldNames)[2:3]=c("V1","V2")
+names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+fieldNames$V1=paste0("code",fieldNames$V1)
+fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+fieldNames$V2=gsub(" ","",fieldNames$V2)
+fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6179.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+######################################################################################################################################################
+print("Finished reformatting categorical fields into wide binary wide format")
+######################################################################################################################################################
+print("Aggregate HES data")
+#HES Data
+#There is an issue with record "4226129" in "/GWD/appbase/projects/RD-TSci-UKB/data_download/HES_test_RS/HESIN_26041_all.tsv" 
+#It has additonal characters/delimiters that are throwing errors in parsing the file within R.
+#Although it is a tab delimited file, that particular record id has 30+ fields compared to the 20 that the other rows have
+#I am premoving this record from the analysis. We can revesit this record at a later time
+#Following step was done on "us1us0168.corpnet2.com", in the shell
+#awk -F"\t" '$2!=4226129 {print $0}' /GWD/appbase/projects/RD-TSci-UKB/data_download/HES_test_RS/HESIN_26041_all.tsv > /home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv
+#Problematic record id in secondary fileset as well
+#awk -F"\t" '$2!=4226129 {print $0}' ~/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.tsv > ~/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv
+#BACK IN R
+#Read in the primary and seconday diagnosis files that were previously generated by Robert Scott
+hesDataPrim <- fread("/home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+hesDataSec <- fread("/home/jh137539/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
+#PheWasDefinitions
+phewasDefinition <- fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+#Some of the names have commas which are problematic in R, reformatted them
+phewasDefinition$PHENOTYPE=gsub("[[:punct:]]", "_",phewasDefinition$PHENOTYPE)
+#Rename diagnosis columns to match for both prim and sec
+names(hesDataPrim)[5]="diag"
+names(hesDataSec)[4]="diag"
+#Combine prim and sec
+hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
+#Add "p_" to each variablte)
+#Roll up codes based on left three characters
+#HES data is read in as long format so some of the steps used in previous sections not necessary
+#For now we are rolling up ICD10 codes into phewas codes by using first 3 characters and renaming with"p_"
+hesDataCombined$diag=paste0("p_",substr(hesDataCombined$diag,1,3))
+names(hesDataCombined)[1:2]=c("f.eid","dxField")
+fieldLong<-hesDataCombined
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+#For HES data,only subjects with ICD10 code are present so everyone will be case in statement below
+fieldLong[,DX := 1]
+#Remove duplicate columns using the subject ID,dxAge, and  dx codes as the key(Need to explore duplicates in more detail for handling earliest diagnosis)
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+#Convert all of the DX NA's in the table to 0s, leave the dxAges alone(leave NA if already NA)
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#Replace names
+for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("HES",currentName,"BIN",filter(phewasDefinition,pheno==currentName)["PHENOTYPE"],sep = "_"))
+#Perform left join and replace previous version
+setkey(fieldWide,f.eid)
+setkey(bd,f.eid)
+#This is a merge tat takes advantage of data.table although the syntax suggests otherwise
+bd <- merge(bd,fieldWide,all.x=T)
+#Replace NAs with 0 in bd for the HES columns as those are subjects with no reported ICD10 codes
+for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
+print("Finished aggregating HES data")
+
+#######################################################################################################################################
+
+print("Aggregate cancer registry data")
+#Cancer Registry(40006,Field 40008,40019,40011,40012,40005)
+#Cancer registry data with interpolated ages as cancer histology information
+fieldArray=names(select(bd,c(starts_with("f.40006."),starts_with("f.40008."),starts_with("f.40005."),starts_with("f.40011."),starts_with("f.40012."),starts_with("f.40019."))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.40006.","^f.40008.","^f.40005.","^f.40011.","^f.40012.","^f.40019."),variable.name="arbField",value.name = c("dxField","dxAge","dxDate","dxHistol","dxBehav","dxSource"))
+fieldLong$dxField=paste0("p_",substr(fieldLong$dxField,1,3))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX","dxAge","dxDate","dxHistol","dxBehav","dxSource"))
+fieldWide[,c("dxAge_p_NA","DX_p_NA","dxDate_p_NA","dxHistol_p_NA","dxBehav_p_NA","dxSource_p_NA"):=NULL]
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#Red in HES data codes
+fieldNames<-fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+fieldNames$PHENOTYPE=gsub("[[:punct:]]", "_",fieldNames$PHENOTYPE)
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]){shortName=gsub("DX_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40006.0",shortName,"BIN",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]){shortName=gsub("dxAge_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40008.0",shortName,"QUANT",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+for(currentName in names(fieldWide)[grep("dxDate",names(fieldWide))]){shortName=gsub("dxDate_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40005.0",shortName,"DATE",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+for(currentName in names(fieldWide)[grep("dxHistol",names(fieldWide))]){shortName=gsub("dxHistol_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40011.0",shortName,"CAT",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+for(currentName in names(fieldWide)[grep("dxBehav",names(fieldWide))]){shortName=gsub("dxBehav_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40012.0",shortName,"CAT",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+for(currentName in names(fieldWide)[grep("dxSource",names(fieldWide))]){shortName=gsub("dxSource_","",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40019.0",shortName,"CAT",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+print("Finished aggregating cancer registry data")
+print(proc.time())
+
+########################################################################################################################################
+
+#Death Registry Registry(40001,Field)
+
+fieldArray=names(select(bd,c(starts_with("f.40001.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.40001."), variable.name="arbField",value.name = c("dxField"))
+fieldLong$dxField=paste0("p_",substr(fieldLong$dxField,1,3))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+fieldWide[,c("p_NA"):=NULL]
+#Convert all of the Death NA's in the table to 0s
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+#Need to update this to first find the code definitions column and then column code
+fieldNames<-fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+fieldNames$PHENOTYPE=gsub("[[:punct:]]", "_",fieldNames$PHENOTYPE)
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]){shortName=gsub("p_","p_",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40001.0",shortName,"BIN",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+
+######################################################################################################################
+
+#Death Registry secondary
+fieldArray=names(select(bd,c(starts_with("f.40002.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.40002."), variable.name="arbField",value.name = c("dxField"))
+fieldLong$dxField=paste0("p_",substr(fieldLong$dxField,1,3))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+fieldWide[,c("p_NA"):=NULL]
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldNames<-fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+fieldNames$PHENOTYPE=gsub("[[:punct:]]", "_",fieldNames$PHENOTYPE)
+fieldNames$abbrev=abbreviate(fieldNames$PHENOTYPE,10)
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]){shortName=gsub("p_","p_",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40002.0",shortName,"BIN",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+######################################################################################################################
+
+#External causes (41201,Field)
+fieldArray=names(select(bd,c(starts_with("f.41201.0"))))
+justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+fieldLong = melt(justFields, measure = patterns("^f.41201."), variable.name="arbField",value.name = c("dxField"))
+fieldLong$dxField=paste0("p_",substr(fieldLong$dxField,1,3))
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+fieldLong[,"arbField":=NULL]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+fieldWide[,c("p_NA"):=NULL]
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+fieldNames<-fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
+fieldNames$PHENOTYPE=gsub("[[:punct:]]", "_",fieldNames$PHENOTYPE)
+fieldNames$abbrev=abbreviate(fieldNames$PHENOTYPE,10)
+for(currentName in names(fieldWide)[grep("p",names(fieldWide))]){shortName=gsub("p_","p_",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.41201.0",shortName,"BIN",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
+bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
+########################################################################################################################################
+#This next block of code needs to be done last as some of the manually agregation takes advantage of original missingess codes
+########################################################################################################################################
+
+print("set missingness for the rest of the variables")
+print(proc.time())
+#Recode -5,-3,-2,-1 based on Field coding specifics
+fieldArray=if(length(grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE))>1)
+for(currentField in dataDictionary[dataDictionary$Coding %in% dataCodingWithNeg5$V1]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE) #optimized
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-5), j=field, value=NA)}
+for(currentField in dataDictionary[dataDictionary$Coding %in% dataCodingWithNeg3$V1]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE) #optimized
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+for(currentField in dataDictionary[dataDictionary$Coding %in% dataCodingWithNeg2$V1]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE) #optimized
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-2), j=field, value=NA)}
+for(currentField in dataDictionary[dataDictionary$Coding %in% dataCodingWithNeg1$V1]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE) #optimized
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)}
+
+print("Finished missingness for the rest of the variables")
+print(proc.time())
+
+########################################################################################################################################
+
+print("Rename of variables")
+#Rename Fields quantitative field with predfined naming scheme for fields that have only one instance and one array
+#Takes as input 3 columns
+#Col1: FieldID
+#Col2: DataCodingValue
+#Col3: Field Description
+#Col4:Cat 3 from data dictionary
+
+#Final Rename of fields where we want to keep first array of first intance. Remove all other instances and arrays. This is done for codes that were not manually annotated
+myNamingScheme <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namingFile.keepFirst.priority.txt")
+myNamingScheme$Field=gsub("[[:punct:]]", "_",myNamingScheme$Field)
+myNamingScheme$Field=gsub(" ", "_",myNamingScheme$Field)
+myNamingScheme$Field=gsub(" {1,}", "_",myNamingScheme$Field)
+myNamingScheme$Field=gsub("_{1,}", "_",myNamingScheme$Field)
+myNamingScheme$Field=gsub("_$", "",myNamingScheme$Field)
+myNamingScheme$Cat3_Title=gsub("[[:punct:]]", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub(" ", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub(" {1,}", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub("_{1,}", "_",myNamingScheme$Cat3_Title)
+myNamingScheme$Cat3_Title=gsub("_$", "",myNamingScheme$Cat3_Title)
+for(currentField in myNamingScheme$FieldID){
+  tryCatch({
+    #Start by removing all but first instance and first array
+    #If a variable has only one column than it is left alone
+    removeFields=if(length(grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE))>1) grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)[2:length(grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE))] else("NA")
+    #Since we do not want to remove fields that I have already processed and that will be idenitified in the line above, I added a set of inverse grep statements
+    removeFields=grep(removeFields,pattern="BIN",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="QUANT",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="CAT",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="COORD",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="DATE",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="DATE",invert=T,value=T)
+    removeFields=grep(removeFields,pattern="22009",invert=T,value=T)
+    bd[,(removeFields):=NULL]
+    #Then rename whats left, which is the first instance and first array
+    myFields=grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+    myFieldDescription=ifelse(length(myFields)>0,filter(myNamingScheme,FieldID==currentField)[["Field"]],"NA")
+    #Use full names
+    setnames(bd,myFields,paste(myFields,"f",filter(myNamingScheme,FieldID==currentField)["traitType"],myFieldDescription,sep = "_"))
+   #setnames(bd,myFields,paste(myFields,"f",filter(myNamingScheme,FieldID==currentField)["DataCodeValue"],abbreviate(myFieldDescription,10),sep = "_"))
+  },error=function(e){print(paste0("Error with:",currentField))})}
+
+print("Finished Renaming Variables")
+print(proc.time())
+
+#####################################################################################################################################
+#Two Way and Three Way Mapping (Combining phenotypes from different data souces such as nurses interview and HES)
+#####################################################################################################################################
+
+print("Run 2 way mapping of variables")
+twoWayMapping <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
+twoWayMapping$V3=gsub("[[:punct:]]", "_",twoWayMapping$V3)
+twoWayMapping$V3=gsub(" ", "_",twoWayMapping$V3)
+twoWayMapping$V3=gsub("_{1,}", "_",twoWayMapping$V3)
+twoWayMapping$V3=gsub(" {1,}", "_",twoWayMapping$V3)
+twoWayMapping$V3=gsub("_$", "",twoWayMapping$V3)
+twoWayMapping4or5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
+twoWayMapping4or5$V3=gsub("[[:punct:]]", "_",twoWayMapping4or5$V3)
+twoWayMapping4or5$V3=gsub(" ", "_",twoWayMapping4or5$V3)
+twoWayMapping4or5$V3=gsub("_{1,}", "_",twoWayMapping4or5$V3)
+twoWayMapping4or5$V3=gsub(" {1,}", "_",twoWayMapping4or5$V3)
+twoWayMapping4or5$V3=gsub("_$", "",twoWayMapping4or5$V3)
+#Since we will be hitting errors where certain ICD10 columns arent present due to no cases being identified, I went ahead and added in an additional column called "zeroColumn", where each row value is set to 0. 
+#This will be used in the steps below where we need to perform ifelse statements. In situations where a code's column is not find, the zeroColumn will be used as a surrogate
+#Again this is assuming that the reason that the HES code column is not present is because no cases where identified during wide formatting.
+bd$zeroColumn=0
+#Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview. 
+#Controls are those subjects that have a 0 for both data types, cases can be from either or
+#This code is dependent on naming scheme prefix!
+#Start by defining function
+nurseInt_hes_2Way_function=function(interviewCode,hesCode,phenoDescrip){
+  #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+  fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
+  #fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
+  fieldHES=grep(x=names(bd),pattern=(paste0("HES_p_",hesCode)),value=TRUE)
+  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
+  fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
+  #print(fieldCombined)
+  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+}
+
+#Run the two way mapping function in a for loop
+for(i in seq_along(twoWayMapping$V1)) {
+  tryCatch({
+  x=twoWayMapping[[i,1]]
+  y=twoWayMapping[[i,2]]
+  z=twoWayMapping[[i,3]]
+  nurseInt_hes_2Way_function(x,y,z)
+  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+
+#####################################################################################################################################
+print("Run 2 way mapping of variables requiring the full ICD10 definition and not phewas codes")
+#Run the two way mapping with ICD10 codes that require 4 and 5 digits
+#Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
+phewasMappingDefinitions <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
+phewasMappingDefinitions$PHENOTYPE=gsub("[[:punct:]]", "_",phewasMappingDefinitions$PHENOTYPE)
+phewasMappingDefinitions$icd10=paste0("p_",phewasMappingDefinitions$icd10)
+names(phewasMappingDefinitions)=c("pheno","PHENOTYPE")
+hesDataPrim <- fread("/home/jh137539/ukb/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+hesDataSec <- fread("/home/jh137539/ukb/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
+names(hesDataPrim)[5]="diag"
+names(hesDataSec)[4]="diag"
+hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
+hesDataCombined$diag=paste0("p_",substr(hesDataCombined$diag,1,5)) #Changed to 5 characters
+names(hesDataCombined)[1:2]=c("f.eid","dxField")
+fieldLong<-hesDataCombined
+fieldLong$DX=NA
+fieldLong$DX=as.integer(fieldLong$DX)
+fieldLong[,DX := 1]
+#Included this extra step here since we dont need all ICD10 codes
+fieldLong<-fieldLong[phewasMappingDefinitions,nomatch="0",on=c("dxField"="pheno")][,-4]
+fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("HES_4or5_char",currentName,"BIN",filter(phewasMappingDefinitions,pheno==currentName)["PHENOTYPE"],sep = "_"))
+setkey(fieldWide,f.eid)
+#bdIDs <- bd[,c(1,1)]
+#bdIDs <- setnames(bdIDs,c(1,2),c("f.eid","f.eid2"))
+setkey(bd,f.eid)
+bd <- merge(bd,fieldWide,all.x=T)
+#Replace NAs with 0 in bd for the HES columns as those are subjects with no reported ICD10 codes
+for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
+####################################################
+#Modify function to use this new file and naming scheme
+nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode,phenoDescrip){
+  #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+  fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
+  #fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
+  fieldHES=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_",hesCode)),value=TRUE)
+  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
+  fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
+  #print(fieldCombined)
+  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+}
+
+#Run the two way mapping function in a for loop
+for(i in seq_along(twoWayMapping4or5$V1)) {
+  tryCatch({
+  x=twoWayMapping4or5[[i,1]]
+  y=twoWayMapping4or5[[i,2]]
+  z=twoWayMapping4or5[[i,3]]
+  nurseInt_hes_2Way_5char_function(x,y,z)
+  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+
+#####################################################################################################################################
+#Create new set of variables based on HES block coding(See HES Ontology)
+#Read in HES Ontology
+hesOntology <- fread("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
+#Remove all special characters besides underscores
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_{1,}","_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_$","",hesOntology[[i]])}
+#Create a variable name for the cancer registry data which follows same phewas coding except it has a different prefix
+hesOntology$cancerRegVar=gsub("HES_p_","f_40006_0_p_",hesOntology$hesCode)
+
+#Create a variable for each block, setting geveryone initially as a control
+for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {bd[,paste0("HES_block_p_",blockHES,"_BIN") := 0]}
+#For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
+for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_block_p_",blockHES,"_BIN"), value=1)}}
+#Chapter variable
+for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {bd[,paste0("HES_chapter_p_",chapterHES,"_BIN") := 0]}
+for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_chapter_p_",chapterHES,"_BIN"), value=1)}}
+
+# #Do the same thing for the cancer registry data
+# #Create a variable for each block, settin geveryone initially as a control
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {bd[,paste0("f_40006_block_",blockHES,"_BIN") := 0]}
+# #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"cancerRegVar"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
+# #Chapter variable
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {bd[,paste0("f_40006_chapter_",chapterHES,"_BIN") := 0]}
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {phenoList=hesOntology[CAT1==chapterHES,"cancerRegVar"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_chapter_",chapterHES,"_BIN"), value=1)}}
+
+#####################################################################################################################################
+# #Tabulate two mapping data
+# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
+#   names(combineTable)=c("remove1","remove2")
+#   for (i in names(bd)[grep("map2way",names(bd))]) {
+#     tryCatch({
+#     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+#     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+#     print(i)
+#  },error=function(e){}) }
+#     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+#     combineTable <- select(combineTable,contains("map2Way"))
+#     print(i)
+#     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/twoWayTables.tables.csv")
+#   }
+
+  ####################################################################################################################################
+#Map 3 way sets.Touch screen,Nurses interview and HES
+#A little unstructered to run through a function
+
+#DVT
+code1=grep(x=names(bd),pattern=(paste0("^f\\.6152\\.0_code5")),value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern=(paste0("^f\\.20002\\.0_dxCode1094")),value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I801")))
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code4=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I802")))
+code4=ifelse(length(code4)==0,"zeroColumn",code4)
+group="dvt"
+bd[, map3way_f6152_code5_intCode1094_hesCode_1801_1802_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0,0,NA))]
+
+#emphysema_bronchitis
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code6",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1113",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+code4=ifelse(length(code4)==0,"zeroColumn",code4)
+code5=grep(x=names(bd),pattern="HES_p_J41",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J42",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code6_intCode1113_1412_1472_hesCode_J41_J42_J43_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0& bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#pulmonary_embolism
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code7",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1093",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_p_I26",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+bd[, map3way_f6152_code7_intCode1093_hesCode_I26_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#asthma
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code8",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1111",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_p_J45",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J46",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code8=grep(x=names(bd),pattern="f\\.22127\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code8_intCode1111_hesCode_J45_J46_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+
+#hay_fever_eczema
+code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code9",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1387",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1452",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code5=grep(x=names(bd),pattern="HES_p_L20",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_J30",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code8=grep(x=names(bd),pattern="f\\.22126\\.0",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6152_code9_intCode1387_1452_hesCode_L20_J30_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+
+#myocardial_infarction
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code1",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1075",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_p_I21",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+bd[, map3way_f6150_code1_intCode1075_hesCode_I21_I22_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0,0,NA))]
+
+#angina
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code2",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1074",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_p_I20",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+bd[, map3way_f6150_code2_intCode1074_hesCode_I20_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#stroke
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code3",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1081",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_p_I60",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I61",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_I62",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="HES_p_I63",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code3_intCode1081_hesCode_I60_I61_I62_I63_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#hypertension
+code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code4",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1065",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1072",value=TRUE)
+code3=ifelse(length(code3)==0,"zeroColumn",code3)
+code5=grep(x=names(bd),pattern="HES_p_I10",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+code6=grep(x=names(bd),pattern="HES_p_I11",value=TRUE)
+code6=ifelse(length(code6)==0,"zeroColumn",code6)
+code7=grep(x=names(bd),pattern="HES_p_I12",value=TRUE)
+code7=ifelse(length(code7)==0,"zeroColumn",code7)
+code8=grep(x=names(bd),pattern="HES_p_I13",value=TRUE)
+code8=ifelse(length(code8)==0,"zeroColumn",code8)
+bd[, map3way_f6150_code4_intCode1065_1072_hesCode_I10_I11_I12_I13_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+
+#gestational_diabetes
+code1=grep(x=names(bd),pattern="^f\\.4041\\.0",value=TRUE)
+code1=ifelse(length(code1)==0,"zeroColumn",code1)
+code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1221",value=TRUE)
+code2=ifelse(length(code2)==0,"zeroColumn",code2)
+code5=grep(x=names(bd),pattern="HES_4or5_char_p_O244",value=TRUE)
+code5=ifelse(length(code5)==0,"zeroColumn",code5)
+bd[, map3way_f4041_intCode1221_hesCode_O244_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+
+#Cancer
+#created a new variable for 40009 where I replaced NAs with 0s, as subjects without a cancer diagnosis do not contribute to the column(e.g. they are NAs)
+bd[,temp400009:= ifelse(is.na(f.40009.0.0_f_QUANT_Reported_occurrences_of_cancer),0,f.40009.0.0_f_QUANT_Reported_occurrences_of_cancer)]
+code1="temp400009"
+#Sum up the number of self reported cancers from the nurses interview data that was converted to wide format for all cancers
+bd$cancerSelfSummed=apply(select(bd,starts_with("f.20001.0_DX")),1,sum,na.rm=T)
+code2="cancerSelfSummed"
+code3=grep(x=names(bd),pattern="^f\\.2453\\.0",value=TRUE)
+#I did not include the conditional zero column statements above as all of these columns are present
+bd[, map3way_f2453_intCodeAllCancersSummed_f40009_BIN_cancer_group_oncology:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
+
+######################################################################################################################################
+
+#Remove all special characters besides underscores
+names(bd)=gsub("[[:punct:]]", "_",names(bd))
+names(bd)=gsub(" ", "_",names(bd))
+names(bd)=gsub("_{1,}", "_",names(bd))
+names(bd)=gsub(" {1,}", "_",names(bd))
+names(bd)=gsub("_$", "",names(bd))
+
+###############################################################################################
+#Create new set of variables based on HES block coding(See HES Ontology)
+#Read in HES Ontology
+hesOntology <- fread("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
+#Remove all special characters besides underscores
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_{1,}","_",hesOntology[[i]])}
+for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_$","",hesOntology[[i]])}
+
+
+#Create a variable for each block, setting geveryone initially as a control
+for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {bd[,paste0("HES_block_p_",blockHES,"_BIN") := 0]}
+#For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
+for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_block_p_",blockHES,"_BIN"), value=1)}}
+#Chapter variable
+for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {bd[,paste0("HES_chapter_p_",chapterHES,"_BIN") := 0]}
+for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_chapter_p_",chapterHES,"_BIN"), value=1)}}
+
+# #Do the same thing for the cancer registry data
+# #Create a variable for each block, settin geveryone initially as a control
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {bd[,paste0("f_40006_block_",blockHES,"_BIN") := 0]}
+# #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
+# #Chapter variable
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {bd[,paste0("f_40006_chapter_",chapterHES,"_BIN") := 0]}
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_chapter_",chapterHES,"_BIN"), value=1)}}
+
+#######################################################################################################################################
+#Special Requests
+#LVEF was left raw
+
+#LVESVi
+#Define BSA using formula provided by mathias
+bd[,specialRequest_QUANT_BSA := 0.007184*(f_50_0_0_f_QUANT_Standing_height^0.725)*(f_21002_0_0_f_QUANT_Weight^0.425)]
+#Calculate LVESVi
+bd[,specialRequest_QUANT_LVESVi := f_22422_2_0_f_QUANT_LV_end_systolic_volume/specialRequest_QUANT_BSA]
+#Same calculation for LVEDVi
+bd[,specialRequest_QUANT_LVEDVi := f_22421_2_0_f_QUANT_LV_end_diastolic_volume/specialRequest_QUANT_BSA]
+#Urine_alb_creat_ratio
+bd[,specialRequest_QUANT_urine_albumin_creatinine_ratio := f_30500_0_0_f_QUANT_Microalbumin_in_urine/f_30510_0_0_f_QUANT_Creatinine_enzymatic_in_urine]
+#FEV1/FVC ratio
+bd[,specialRequest_QUANT_FEV1_FVC_ratio := f_3063_0_f_QUANT_FEV1_maximumValue/f_3062_0_f_QUANT_FVC_maximumValue]
+#Take minimum of SRT which is the better of the 2 ears
+bd$specialRequest_QUANT_hear_loss_B <- apply(select(bd,c(starts_with("f_20021_"),starts_with("f_20019_0_0"))),1,min,na.rm=T)
+set(bd,i=which(is.infinite(bd[["specialRequest_QUANT_hear_loss_B"]])),j="specialRequest_QUANT_hear_loss_B",value=NA)
+# Joint pain
+bd[,specialRequest_BIN_joint_pain := ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==1|bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==1,1,ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==0 & bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==0,0,NA))]
+#FEV1 in never smokers, remove everyone else
+bd[,specialRequest_QUANT_FEV1_never_smoked_only := ifelse(f_20160_0_0_f_BIN_Ever_smoked==1|is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,f_3063_0_f_QUANT_FEV1_maximumValue)]
+#FEV1 smoked at least once in lifetime, remove everyone else
+bd[,specialRequest_QUANT_FEV1_ever_smoked_only := ifelse(f_20160_0_0_f_BIN_Ever_smoked==0|is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,f_3063_0_f_QUANT_FEV1_maximumValue)]
+#FEV1/FVC ratio in never smokers, remove everyone else
+bd[,specialRequest_QUANT_FEV1_FVC_ratio_never_smoked_only := ifelse(f_20160_0_0_f_BIN_Ever_smoked==1|is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,specialRequest_QUANT_FEV1_FVC_ratio)]
+#FEV1/FVC ratio smoked at least once in lifetime, remove everyone else
+bd[,specialRequest_QUANT_FEV1_FVC_ratio_ever_smoked_only := ifelse(f_20160_0_0_f_BIN_Ever_smoked==0|is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,specialRequest_QUANT_FEV1_FVC_ratio)]
+
+#Predicted FEV1
+#Derive exclusionary criteria based on respiratory related abnormalities and ever smoked
+bd[,fev1_pred_exclude:= ifelse(f_2316_0_0_f_BIN_Wheeze_or_whistling_in_the_chest_in_last_year==1|is.na(f_2316_0_0_f_BIN_Wheeze_or_whistling_in_the_chest_in_last_year),1,
+  ifelse(f_6152_0_code6_BIN_Emphysema_chronic_bronchitis==1|is.na(f_6152_0_code6_BIN_Emphysema_chronic_bronchitis),1,
+    ifelse(f_6152_0_code8_BIN_Asthma==1|is.na(f_6152_0_code8_BIN_Asthma),1,
+      ifelse(f_20002_0_dxCode1111_BIN_asthma==1|is.na(f_20002_0_dxCode1111_BIN_asthma),1,
+        ifelse(f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|is.na(f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd),1,
+         ifelse(f_20002_0_dxCode1113_BIN_emphysema_chronic_bronchitis==1|is.na(f_20002_0_dxCode1113_BIN_emphysema_chronic_bronchitis),1,
+          ifelse(f_20002_0_dxCode1114_BIN_bronchiectasis==1|is.na(f_20002_0_dxCode1114_BIN_bronchiectasis),1,
+            ifelse(f_20002_0_dxCode1115_BIN_interstitial_lung_disease==1|is.na(f_20002_0_dxCode1115_BIN_interstitial_lung_disease),1,
+              ifelse(f_20002_0_dxCode1120_BIN_asbestosis==1|is.na(f_20002_0_dxCode1120_BIN_asbestosis),1,
+                ifelse(f_20002_0_dxCode1124_BIN_respiratory_failure==1|is.na(f_20002_0_dxCode1124_BIN_respiratory_failure),1,
+                  ifelse(f_20002_0_dxCode1125_BIN_pleurisy==1|is.na(f_20002_0_dxCode1125_BIN_pleurisy),1,
+                   ifelse(f_20002_0_dxCode1126_BIN_spontaneous_pneumothorax_recurrent_pneumothorax==1|is.na(f_20002_0_dxCode1126_BIN_spontaneous_pneumothorax_recurrent_pneumothorax),1,
+                    ifelse(f_20002_0_dxCode1117_BIN_other_respiratory_problems==1|is.na(f_20002_0_dxCode1117_BIN_other_respiratory_problems),1,
+                      ifelse(f_20160_0_0_f_BIN_Ever_smoked==1|is.na(f_20160_0_0_f_BIN_Ever_smoked),1,0))))))))))))))]
+
+#Run regression model to get pred FEV1 using only subjects that did not meet exclusionary criteria set aboved
+fev1.pred=lm(data=bd[fev1_pred_exclude==0,],f_3063_0_f_QUANT_FEV1_maximumValue~f_21003_0_0_f_QUANT_Age_when_attended_assessment_centre+f_31_0_0_f_BIN_Sex+f_50_0_0_f_QUANT_Standing_height,na.action=na.exclude)
+#Create a new variable for the predicted values
+bd[, specialRequest_QUANT_FEV1_pred := NA]
+bd[, specialRequest_QUANT_FEV1_pred := as.double(specialRequest_QUANT_FEV1_pred)]
+#Using the coefficients from the linear model, predict FEV1 in the entire cohort.
+bd[,specialRequest_QUANT_FEV1_pred := predict(fev1.pred,bd)]
+bd[,specialRequest_QUANT_FEV1_percent_pred:= (f_3063_0_f_QUANT_FEV1_maximumValue/specialRequest_QUANT_FEV1_pred)*100]
+#Print Correlation between Tobin FEV predicted and new FEV1 predicted values
+c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test(bd$specialRequest_QUANT_FEV1_pred,bd$f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted)$estimate))[2]
+#COPD as defined by spirometry
+bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd==0 & !is.na(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd),0,ifelse(specialRequest_QUANT_FEV1_FVC_ratio < 0.7 & specialRequest_QUANT_FEV1_percent_pred < 80,1,NA))]
+
+#Osteoarthiritis based on self report or HES
+#Fix 2 way mapping based on discussion with Robert Scott
+bd[,map2way3char_intCode1465_hesCodeM19_BIN_osteoarthritis:=NULL]
+fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1465")),value=TRUE)
+fieldHES="HES_block_p_M15_M19_Arthrosis_BIN"
+bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+#Create osteo special request variable
+bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis==1,1,
+  ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
+
+#Remove a couple of the columns that I recoded into wide format but that are still in the data frame
+bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
+bd[,"f_6158_0_0_f_BIN_Why_reduced_smoking" := NULL]
+bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
+
+#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
+{combineTable<-data.frame(matrix(nrow=2,ncol=2))
+  names(combineTable)=c("remove1","remove2")
+  for (i in names(bd)[grep("BIN",names(bd))]) {
+    tryCatch({
+    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+    #print(i)
+ },error=function(e){}) }
+    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+    combineTable <- select(combineTable,contains("BIN"))
+    #print(i)
+    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08222017.csv")
+  }
+
+#Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
+quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
+names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
+write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08222017.csv")
+
+print("time to write files:Start")
+print(proc.time())
+  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08222017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08222017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08222017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08222017.txt",sep="\t")
+  write.table(names(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08222017.txt",sep="\t")
+print("time to write files:Stop")
+print(proc.time())
+
+#plotting variables
+#just40008[,c(1:12)] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave("test2.pdf",,width=10,height=20,paper='special')
+
+# for(i in seq(from=1,to=ncol(bd),by=30)){
+#   startRange=i+1
+#   endRange=startRange+29
+#   bd[,startRange:endRange] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave(paste0("/home/jh137539/ukb/benchmarking/codeTesting/plotsForRS/","quantPlots_",startRange,"_",endRange,".pdf"),width=10,height=20,paper='special')
+# }
