@@ -1,4 +1,5 @@
-library(tidyverse)
+#library(tidyverse)
+library(dplyr)
 library(data.table)
 #Necessary for combining tables of different lengths
 library(gdata)
@@ -39,7 +40,7 @@ bd<-bd[,(finalList),with=FALSE]
 for (i in seq_along(bd)) set(bd, i=which(bd[[i]]==""), j=i, value=NA)
 print("Reduced to priority fields and set empty elements to NA")
 print(proc.time())
-#Since the field description has special characters I am removing them as they disrupt fut#Instead of applying global recoding of missing values, I created individual field lists that had the specific missing values present 
+#Instead of applying global recoding of missing values, I created individual field lists that had the specific missing values present 
 #and only changed those, code-by-code
 dataCodingWithNeg5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg5Missing.ls",header = F)
 dataCodingWithNeg3 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg3Missing.ls",header = F)
@@ -166,7 +167,7 @@ bd[,f.47_f_QUANT_grip_strength_maximumValue := apply(select(bd,starts_with("f.47
 set(bd,i=which(is.infinite(bd[["f.47_f_QUANT_grip_strength_maximumValue"]])),j="f.47_f_QUANT_grip_strength_maximumValue",value=NA)
 
 #Take maximum from the combined left and right hand
-bd[,f.47_f_QUANT_grip_strength_maximumValue := apply(select(bd,f.46_f_QUANT_grip_strength_maximumValue,f.47_f_QUANT_grip_strength_maximumValue),1,max,na.rm=T)]
+bd[,f.47_46_QUANT_grip_strength_maximumValue := apply(select(bd,f.46_f_QUANT_grip_strength_maximumValue,f.47_f_QUANT_grip_strength_maximumValue),1,max,na.rm=T)]
 
 
 #Take maximum of first instance Field 3062 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
@@ -186,6 +187,10 @@ bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0"
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3064
+#Also included 20152 which dewfined reproducibility of best measure
+bd[,f.3064.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3064.0.0,NA)]
+bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3064.0.1,NA)]
+bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3064.0.2,NA)]
 bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
 
@@ -401,7 +406,14 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100539"]$FieldID)
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
 
-  #Recode Data code 272
+#Recode Data code 272
+#We also want to create a new phenotype variable for this code(do this first as we need the unknown date information)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(is.na(bd[[field]])), j=paste0(field,"_BIN_pheno"), value=0)
+  for(field in fieldArray) set(bd, i=which(!is.na(bd[[field]])), j=paste0(field,"_BIN_pheno"), value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=paste0(field,"_BIN_pheno"), value=NA)}
+
 for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=field, value=NA)}
@@ -569,6 +581,7 @@ fieldLong[,"dxField":=NULL]
 names(fieldLong)[2]="f.6138.0_f_BIN_Qualifications"
 fieldWide<-fieldLong
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+
 
 ########################################################################################################################################
 
@@ -1594,7 +1607,7 @@ fieldNames$V1=paste0("code",fieldNames$V1)
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
 fieldNames$V2=gsub(" ","",fieldNames$V2)
 fieldNames$abbrev=abbreviate(fieldNames$V2,10)
-for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.6179.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.2395.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ######################################################################################################################################################
@@ -2214,6 +2227,12 @@ bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(b
 bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis==1,1,
   ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
 
+#renal kidney failure updated with block coding
+bd[,map2way3char_intCode1192_hesCodeN17throughM19_BIN_renal_kidney_failure:=NULL]
+fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1192")),value=TRUE)
+fieldHES="N17_N19_Renal_failure"
+bd[,map2way3char_intCode1192_hesCodeN17throughM19_BIN_renal_kidney_failure := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+
 #Remove a couple of the columns that I recoded into wide format but that are still in the data frame
 bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
 bd[,"f_6158_0_0_f_BIN_Why_reduced_smoking" := NULL]
@@ -2231,21 +2250,21 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08222017.csv")
+    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08252017.csv")
   }
 
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08222017.csv")
+write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08252017.csv")
 
 print("time to write files:Start")
 print(proc.time())
-  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08222017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08222017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08222017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08222017.txt",sep="\t")
-  write.table(names(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08222017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08252017.txt",sep="\t")
+  write.table(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08252017.txt",sep="\t")
+  write.table(names(select(bd,c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08252017.txt",sep="\t")
 print("time to write files:Stop")
 print(proc.time())
 
