@@ -410,8 +410,11 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100539"]$FieldID)
 #We also want to create a new phenotype variable for this code(do this first as we need the unknown date information)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
-  for(field in fieldArray) set(bd, i=which(is.na(bd[[field]])), j=paste0(field,"_BIN_pheno"), value=0)
+  #Create new variable by first setting everone to controls(I have been having trouble initiating variable to NA)
+  for(field in fieldArray) bd[,paste0(field,"_BIN_pheno"):=0]
+  #If subject has a date present than set to cases, otherwise leave alone
   for(field in fieldArray) set(bd, i=which(!is.na(bd[[field]])), j=paste0(field,"_BIN_pheno"), value=1)
+  #Set missingness code
   for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=paste0(field,"_BIN_pheno"), value=NA)}
 
 for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
