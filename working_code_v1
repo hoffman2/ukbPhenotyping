@@ -2332,25 +2332,25 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 #Merge in Ioanna's QCd file, performing a left join since I want to keep all phenotype data for now
 #bd <- merge(bd,newPCsChipCovar,by.x="f_eid",by.y="IID",all.x=TRUE)
 
-# #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
-#   names(combineTable)=c("remove1","remove2")
-#   for (i in names(bd)[grep("BIN",names(bd))]) {
-#     tryCatch({
-#     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-#     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-#     #print(i)
-#  },error=function(e){}) }
-#     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-#     combineTable <- select(combineTable,contains("BIN"))
-#     #print(i)
-#     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08282017.csv")
-#   }
+#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
+{combineTable<-data.frame(matrix(nrow=2,ncol=2))
+  names(combineTable)=c("remove1","remove2")
+  for (i in names(bd)[grep("BIN",names(bd))]) {
+    tryCatch({
+    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+    #print(i)
+ },error=function(e){}) }
+    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+    combineTable <- select(combineTable,contains("BIN"))
+    #print(i)
+    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08282017.csv")
+  }
 
 # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
-# quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
-# names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-# write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08282017.csv")
+quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
+names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
+write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08282017.csv")
 
 # #Kijoun needs seperate files for quant,bin, and covariates
 binOutcome1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
