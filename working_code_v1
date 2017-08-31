@@ -6,9 +6,10 @@ library(gdata)
 #All fields and subjects
 print("time to read in full pheWas table:Start")
 print(proc.time())
-bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", header=TRUE, sep="\t")
+#bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", nrows=5000,header=TRUE, sep="\t")
+bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab",header=TRUE, sep="\t")
 #QCd genetic file created by Ioanna
-newPCsChipCovar<- fread("/home/jh137539/ukb/phenotypes/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
+#newPCsChipCovar<- fread("/home/jh137539/ukb/phenotypes/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 print("Done reading in file")
 print(proc.time())
 #bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
@@ -672,15 +673,16 @@ fieldWide[,c("dxAge_NA","DX_NA","dxYear_NA"):=NULL]
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 #Bug fix for subjects with all missing
 fieldWide[fieldWide$`DX_-9`==-9,c(2:ncol(fieldWide))]=NA
+fieldWide[,c("-9","NA","0"):=NULL]
 #Use the data coding file to assign names to the wide formatted vairables
 fieldNames <- dataCoding[Coding=="3",]
 names(fieldNames)[2:3]=c("V1","V2")
 #Remove special characters from the field descriptions and replace with a "_"
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
 #Replace names
-for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20007.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
-for(currentName in names(fieldWide)[grep("dxYear",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20006.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
-for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20001.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20007.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxYear",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20006.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20001.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
 #Join these new columns to data.table and replace previous version
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
@@ -703,12 +705,13 @@ fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 #Bug fix for subjects with all missing
 fieldWide[fieldWide$`DX_-9`==-9,c(2:ncol(fieldWide))]=NA
+fieldWide[,c("-9","NA","0"):=NULL]
 #Use the data coding file to assign names to the wide formatted vairables
 fieldNames <- dataCoding[Coding=="6",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
-for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20009.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
-for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(currentName,names(fieldWide))],paste("f.20002.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("dxAge",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20009.0",currentName,"QUANT",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
+for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("\\b",currentName,"\\b"),names(fieldWide))],paste("f.20002.0",currentName,"BIN",filter(fieldNames,V1==unlist(strsplit(currentName,split="_"))[2])["V2"],sep = "_"))
 names(fieldWide)=gsub("DX_","dxCode",names(fieldWide))
 names(fieldWide)=gsub("dxAge_","dxAgeCode",names(fieldWide))
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
@@ -838,7 +841,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="74",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -865,7 +868,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="76",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -890,7 +893,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","-9"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1001",]
 fieldNames$V1=paste0("code",fieldNames$V1)
 fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
@@ -915,7 +918,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","-9","0"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100351",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -942,7 +945,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","-9","0"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100523",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -1018,7 +1021,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","-9"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100622",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -1157,7 +1160,7 @@ for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[cur
 #All the above answer
 fieldWide[fieldWide$`15`=="1",c(2:ncol(fieldWide))]=1
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","0"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100498",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1182,7 +1185,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[,c("NA","-9"):=NULL]
+fieldWide[,c("-9","NA","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100430",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1274,6 +1277,7 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+fieldWide[,c("p_-9","NA","p_0"):=NULL]
 fieldWide[,c("p_NA"):=NULL]
 #I dont have a step here to import fieldNames as the phewas definitions were imported at the beginning of this script.
 for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.41210_41200.0",currentName,"BIN",filter(operativeProcedures,coding==currentName)["meaning"],sep = "_"))
@@ -1322,6 +1326,7 @@ fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 #remove arbitrary columns
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1373,6 +1378,7 @@ fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 #remove arbitrary columns
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1410,6 +1416,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1446,6 +1453,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1482,6 +1490,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1519,6 +1528,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1558,6 +1568,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1597,6 +1608,7 @@ fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
 fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
 fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="1010",]
 names(fieldNames)[2:3]=c("V1","V2")
 fieldNames$V1=paste0("code",fieldNames$V1)
@@ -1620,6 +1632,7 @@ fieldLong[,"arbField":=NULL]
 fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX"))
 fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
+fieldWide[,c("NA","dxAge_-9","DX_-9","0"):=NULL]
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldNames <- dataCoding[Coding=="5",]
 names(fieldNames)[2:3]=c("V1","V2")
@@ -1648,6 +1661,7 @@ fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 fieldWide[,c("NA","0"):=NULL]
+fieldWide[,c("NA","-9","0"):=NULL]
 fieldNames <- dataCoding[Coding=="100695",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -2305,10 +2319,10 @@ bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_h
   ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
 
 #renal kidney failure updated with block coding
-bd[,map2way3char_intCode1192_hesCodeN17throughM19_BIN_renal_kidney_failure:=NULL]
+bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
 fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1192")),value=TRUE)
-fieldHES="N17_N19_Renal_failure"
-bd[,map2way3char_intCode1192_hesCodeN17throughM19_BIN_renal_kidney_failure := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+fieldHES="HES_block_p_N17_N19_Renal_failure_BIN"
+bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 
 #Remove a couple of the columns that I recoded into wide format but that are still in the data frame
 bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
@@ -2316,35 +2330,52 @@ bd[,"f_6158_0_0_f_BIN_Why_reduced_smoking" := NULL]
 bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 
 #Merge in Ioanna's QCd file, performing a left join since I want to keep all phenotype data for now
-bd <- merge(bd,newPCsChipCovar,by.x="f_eid",by.y="IID",all.x=TRUE)
+#bd <- merge(bd,newPCsChipCovar,by.x="f_eid",by.y="IID",all.x=TRUE)
 
-#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-{combineTable<-data.frame(matrix(nrow=2,ncol=2))
-  names(combineTable)=c("remove1","remove2")
-  for (i in names(bd)[grep("BIN",names(bd))]) {
-    tryCatch({
-    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-    #print(i)
- },error=function(e){}) }
-    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-    combineTable <- select(combineTable,contains("BIN"))
-    #print(i)
-    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08282017.csv")
-  }
+# #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
+# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
+#   names(combineTable)=c("remove1","remove2")
+#   for (i in names(bd)[grep("BIN",names(bd))]) {
+#     tryCatch({
+#     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+#     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+#     #print(i)
+#  },error=function(e){}) }
+#     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+#     combineTable <- select(combineTable,contains("BIN"))
+#     #print(i)
+#     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08282017.csv")
+#   }
 
-#Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
-quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
-names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08282017.csv")
+# #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
+# quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
+# names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
+# write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08282017.csv")
 
-print("time to write files:Start")
-print(proc.time())
-  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08282017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08282017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08282017.txt",sep="\t")
-  write.table(select(bd,c(f_eid,one_of(names(newPCsChipCovar)),contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08282017.txt",sep="\t")
-  write.table(names(select(bd,one_of(names(newPCsChipCovar)),c(f_eid,contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08282017.txt",sep="\t")
+# #Kijoun needs seperate files for quant,bin, and covariates
+binOutcome1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
+quantOutcome1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
+bd[,IID:=f_eid]
+bd[,FID:=f_eid]
+bd[,f_eid:=NULL]
+#Create a data frame of all the variables that are present in the phenotype matrix
+bdNames <- as.data.frame(cbind(names(bd),names(bd)))
+#Generate the set of variables that overlap between outcome and 
+binOutcome1 <- inner_join(binOutcome1,bdNames)
+quantOutcome1 <- inner_join(quantOutcome1,bdNames)
+
+
+# print("time to write files:Start")
+# print(proc.time())
+# #  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08312017.txt",sep="\t")
+# #  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08312017.txt",sep="\t")
+# #  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08312017.txt",sep="\t")
+# write.table(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08312017.txt",sep="\t")
+# write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08312017.txt",sep="\t")
+# #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.COVAR.txt")
+write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.BIN.txt")
+write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.QUANT.txt")
+
 print("time to write files:Stop")
 print(proc.time())
 
