@@ -7,14 +7,17 @@ library(gdata)
 print("time to read in full pheWas table:Start")
 print(proc.time())
 #bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", nrows=5000,header=TRUE, sep="\t")
-bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab",header=TRUE, sep="\t")
+#Old directory
+#bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab",header=TRUE, sep="\t")
+#New directory
+bd <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/originalPhenotypes/ukb9888.allFields.tab",header=TRUE, sep="\t")
 #QCd genetic file created by Ioanna
 #newPCsChipCovar<- fread("/home/jh137539/ukb/phenotypes/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 print("Done reading in file")
 print(proc.time())
 #bd <- fread("/home/jh137539/ukb/benchmarking/ukb9888.allFields.first5k.tab", header=TRUE, sep="\t") #For testing I created a set of 5K subjects
-dataDictionary <- fread("/home/jh137539/ukb/dataCoding/Data_Dictionary_Showcase.csv",header = T)
-dataCoding <- fread("/home/jh137539/ukb/dataCoding/Codings_Showcase.csv")
+dataDictionary <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/dataCoding/Data_Dictionary_Showcase.csv",header = T)
+dataCoding <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/dataCoding/Codings_Showcase.csv")
 phewasDefinition <- fread(file="/GWD/appbase/projects/RD-TSci-PhewasUKB/PheWAS/phenotype/Anno_HESelf_BI.csv",header=T)[,c(1,4)]
 phewasDefinition$PHENOTYPE=gsub("[[:punct:]]", "_",phewasDefinition$PHENOTYPE)
 phewasDefinition$PHENOTYPE=gsub(" {1,}", "_",phewasDefinition$PHENOTYPE)
@@ -29,7 +32,7 @@ dataCoding$V2=gsub(" {1,}", "_",dataCoding$V2)
 dataCoding$V2=gsub("_{1,}", "_",dataCoding$V2)
 dataCoding$V2=gsub("_$", "",dataCoding$V2)
 #Load in the fields that we are planning on keeping for the first set of analyses(Need to also make sure that the "f.eid" is included)
-priorityFieldList <- fread("/home/jh137539/ukb/benchmarking/codeTesting/priorityFieldList.ls", header=FALSE, sep="\t")
+priorityFieldList <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/priorityFieldList.ls", header=FALSE, sep="\t")
 #Find all the instances and arrays for the priority set
 {finalList=NULL;for(i in seq_along(priorityFieldList$V1)){keepSet=grep(names(bd),pattern=paste0("f.",priorityFieldList$V1[i],"\\."),value=T)
   finalList=c(finalList,keepSet);finalList}
@@ -45,10 +48,10 @@ print("Reduced to priority fields and set empty elements to NA")
 print(proc.time())
 #Instead of applying global recoding of missing values, I created individual field lists that had the specific missing values present 
 #and only changed those, code-by-code
-dataCodingWithNeg5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg5Missing.ls",header = F)
-dataCodingWithNeg3 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg3Missing.ls",header = F)
-dataCodingWithNeg2 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg2Missing.ls",header = F)
-dataCodingWithNeg1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/neg1Missing.ls",header = F)
+dataCodingWithNeg5 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/neg5Missing.ls",header = F)
+dataCodingWithNeg3 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/neg3Missing.ls",header = F)
+dataCodingWithNeg2 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/neg2Missing.ls",header = F)
+dataCodingWithNeg1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/neg1Missing.ls",header = F)
 #Recode binary phenotypes to coding rules assigned by RS and JH
 
 #Recode 90; Never,Past,Current(Coded past and current as 1)
@@ -623,7 +626,7 @@ fieldWide[fieldWide$`-9`==-9,c(2:ncol(fieldWide))]=NA
 fieldWide[,c("-9","NA","0"):=NULL]
 #Read in a file that has the pain code definitions in the same order as the columns
 #Need to update this to first find the code definitions column and then column code
-#fieldNames<-fread("/home/jh137539/ukb/benchmarking/codeTesting/painForRename.ls", header=FALSE, sep="\t")
+#fieldNames<-fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/painForRename.ls", header=FALSE, sep="\t")
 fieldNames <- dataCoding[Coding=="100553",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -1252,7 +1255,7 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 ########################################################################################################################################
 
 #Aggregation of field code 41210 (No age attached); these codes are in relation to operative procedures. They are to be coded using the pheWAS code definitions
-operativeProcedures <- fread("/home/jh137539/ukb/dataCoding/coding240.tsv")
+operativeProcedures <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/dataCoding/coding240.tsv")
 for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub("[[:punct:]]", "_",operativeProcedures[[i]])}
 for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub(" {1,}","_",operativeProcedures[[i]])}
 for(i in names(operativeProcedures)) {operativeProcedures[[i]]=gsub("_{1,}","_",operativeProcedures[[i]])}
@@ -1886,7 +1889,7 @@ print("Rename of variables")
 #Col4:Cat 3 from data dictionary
 
 #Final Rename of fields where we want to keep first array of first intance. Remove all other instances and arrays. This is done for codes that were not manually annotated
-myNamingScheme <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namingFile.keepFirst.priority.txt")
+myNamingScheme <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/namingFile.keepFirst.priority.txt")
 myNamingScheme$Field=gsub("[[:punct:]]", "_",myNamingScheme$Field)
 myNamingScheme$Field=gsub(" ", "_",myNamingScheme$Field)
 myNamingScheme$Field=gsub(" {1,}", "_",myNamingScheme$Field)
@@ -1927,13 +1930,13 @@ print(proc.time())
 #####################################################################################################################################
 
 print("Run 2 way mapping of variables")
-twoWayMapping <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
+twoWayMapping <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
 twoWayMapping$V3=gsub("[[:punct:]]", "_",twoWayMapping$V3)
 twoWayMapping$V3=gsub(" ", "_",twoWayMapping$V3)
 twoWayMapping$V3=gsub("_{1,}", "_",twoWayMapping$V3)
 twoWayMapping$V3=gsub(" {1,}", "_",twoWayMapping$V3)
 twoWayMapping$V3=gsub("_$", "",twoWayMapping$V3)
-twoWayMapping4or5 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
+twoWayMapping4or5 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
 twoWayMapping4or5$V3=gsub("[[:punct:]]", "_",twoWayMapping4or5$V3)
 twoWayMapping4or5$V3=gsub(" ", "_",twoWayMapping4or5$V3)
 twoWayMapping4or5$V3=gsub("_{1,}", "_",twoWayMapping4or5$V3)
@@ -1972,7 +1975,7 @@ for(i in seq_along(twoWayMapping$V1)) {
 print("Run 2 way mapping of variables requiring the full ICD10 definition and not phewas codes")
 #Run the two way mapping with ICD10 codes that require 4 and 5 digits
 #Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
-phewasMappingDefinitions <- fread("/home/jh137539/ukb/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
+phewasMappingDefinitions <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
 phewasMappingDefinitions$PHENOTYPE=gsub("[[:punct:]]", "_",phewasMappingDefinitions$PHENOTYPE)
 phewasMappingDefinitions$icd10=paste0("p_",phewasMappingDefinitions$icd10)
 names(phewasMappingDefinitions)=c("pheno","PHENOTYPE")
@@ -2026,7 +2029,7 @@ for(i in seq_along(twoWayMapping4or5$V1)) {
 #####################################################################################################################################
 #Create new set of variables based on HES block coding(See HES Ontology)
 #Read in HES Ontology
-hesOntology <- fread("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
+hesOntology <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
 #Remove all special characters besides underscores
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntology[[i]])}
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
@@ -2065,7 +2068,7 @@ for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) 
 #     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
 #     combineTable <- select(combineTable,contains("map2Way"))
 #     print(i)
-#     write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/benchmarking/codeTesting/twoWayTables.tables.csv")
+#     write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/twoWayTables.tables.csv")
 #   }
 
   ####################################################################################################################################
@@ -2224,7 +2227,7 @@ names(bd)=gsub("_$", "",names(bd))
 ###############################################################################################
 #Create new set of variables based on HES block coding(See HES Ontology)
 #Read in HES Ontology
-hesOntology <- fread("/home/jh137539/ukb/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
+hesOntology <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/dataCoding/forHesBlockCoding.txt",sep="\t",header=T)
 #Remove all special characters besides underscores
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntology[[i]])}
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
@@ -2344,17 +2347,17 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.tables.08282017.csv")
+    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09062017.csv")
   }
 
 # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.tables.08282017.csv")
+write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09062017.csv")
 
 # #Kijoun needs seperate files for quant,bin, and covariates
-binOutcome1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
-quantOutcome1 <- fread("/home/jh137539/ukb/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
+binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
+quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
 bd[,f_eid:=NULL]
@@ -2367,14 +2370,14 @@ quantOutcome1 <- inner_join(quantOutcome1,bdNames)
 
 # print("time to write files:Start")
 # print(proc.time())
-# #  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.BIN.phenoFile.08312017.txt",sep="\t")
-# #  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.QUANT.phenoFile.08312017.txt",sep="\t")
-# #  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.CAT.phenoFile.08312017.txt",sep="\t")
-# write.table(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.phenoFile.08312017.txt",sep="\t")
-# write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.fieldNames.08312017.txt",sep="\t")
-# #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.COVAR.txt")
-write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.BIN.txt")
-write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/home/jh137539/ukb/phenotypes/custom/UKB9888.forKijoung.08312017.QUANT.txt")
+# #  write.table(select(bd,c(f_eid,contains("BIN"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.BIN.phenoFile.08312017.txt",sep="\t")
+# #  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.QUANT.phenoFile.08312017.txt",sep="\t")
+# #  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.CAT.phenoFile.08312017.txt",sep="\t")
+# write.table(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.phenoFile.08312017.txt",sep="\t")
+# write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.fieldNames.08312017.txt",sep="\t")
+# #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.forKijoung.08312017.COVAR.txt")
+write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09062017.BIN.txt")
+write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09062017.QUANT.txt")
 
 print("time to write files:Stop")
 print(proc.time())
