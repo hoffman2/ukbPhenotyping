@@ -6,7 +6,8 @@ library(gdata)
 #All fields and subjects
 print("time to read in full pheWas table:Start")
 print(proc.time())
-#bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab", nrows=5000,header=TRUE, sep="\t")
+#For benchmarking
+#bd <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/originalPhenotypes/ukb9888.allFields.tab", nrows=5000,header=TRUE, sep="\t")
 #Old directory
 #bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab",header=TRUE, sep="\t")
 #New directory
