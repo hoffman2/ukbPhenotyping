@@ -1505,7 +1505,7 @@ for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fie
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
-#Aggregation of field code 20112 (adopted mother illness) (No age attached)
+#Aggregation of field code 20113 (adopted mother illness) (No age attached)
 fieldArray=names(select(bd,c(starts_with("f.20113.0"))))
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
 set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
@@ -1542,84 +1542,85 @@ for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fie
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
-
-#Following block is to create a new variable where subject diagnosis is based on whether the mother or father had the disease
-fieldArray=names(select(bd,c(starts_with("f.20110.0."),starts_with("f.20107.0."))))
-justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
-set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
-fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
-fieldLong$DX=NA
-fieldLong$DX=as.integer(fieldLong$DX)
-set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
-fieldLong[,"arbField":=NULL]
-#Prioritize cases, such that if mother was a case and father was a control, keep the case diagnosis
-fieldLong <- fieldLong[order(f.eid,-DX)]
-fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
-fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
-for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
-fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
-fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
-fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
-fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
-fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
-fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
-fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
-fieldWide[,c("NA","-9","0"):=NULL]
-fieldNames <- dataCoding[Coding=="1010",]
-names(fieldNames)[2:3]=c("V1","V2")
-names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
-fieldNames$V1=paste0("code",fieldNames$V1)
-fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
-fieldNames$abbrev=abbreviate(fieldNames$V2,10)
-for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20111",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
-bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+# #Following block is to create a new variable where subject diagnosis is based on whether the mother or father had the disease
+# fieldArray=names(select(bd,c(starts_with("f.20110.0."),starts_with("f.20107.0."))))
+# justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+# set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
+# fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
+# fieldLong$DX=NA
+# fieldLong$DX=as.integer(fieldLong$DX)
+# set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+# #need to use a slighly different coding scheme for collating mother/father/sibling
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+# fieldLong[,"arbField":=NULL]
+# #Prioritize cases, such that if mother was a case and father was a control, keep the case diagnosis
+# fieldLong <- fieldLong[order(f.eid,-DX)]
+# fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+# fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+# for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+# fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+# fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+# fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+# #fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+# fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+# fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+# #fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+# fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+# fieldWide[,c("NA","-9","0"):=NULL]
+# fieldNames <- dataCoding[Coding=="1010",]
+# names(fieldNames)[2:3]=c("V1","V2")
+# names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+# fieldNames$V1=paste0("code",fieldNames$V1)
+# fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+# fieldNames$abbrev=abbreviate(fieldNames$V2,10)
+# for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20110",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+# bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
 
-#Following block is to create a new variable where subject diagnosis is based on whether the siblings, mother or father had the disease
-fieldArray=names(select(bd,c(starts_with("f.20111.0."),starts_with("f.20107.0."),starts_with("f.20110.0."))))
-justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
-set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
-fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
-fieldLong$DX=NA
-fieldLong$DX=as.integer(fieldLong$DX)
-set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
-fieldLong[,"arbField":=NULL]
-fieldLong <- fieldLong[order(f.eid,-DX)]
-fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
-fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
-for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
-fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
-fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
-fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
-fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
-fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
-fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
-fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
-fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
-fieldWide[,c("NA","-9","0"):=NULL]
-fieldNames <- dataCoding[Coding=="1010",]
-names(fieldNames)[2:3]=c("V1","V2")
-fieldNames$V1=paste0("code",fieldNames$V1)
-fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
-names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
-for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20111_20110.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
-bd<-bd[fieldWide,nomatch="0",on="f.eid"]
+# #Aggregate M+s+F for GWAX variable
+# #Following block is to create a new variable where subject diagnosis is based on whether the siblings, mother or father had the disease
+# fieldArray=names(select(bd,c(starts_with("f.20111.0."),starts_with("f.20107.0."),starts_with("f.20110.0."))))
+# justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
+# set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
+# fieldLong = melt(justFields, measure = patterns("^f.201"), variable.name="arbField",value.name = c("dxField"))
+# fieldLong$DX=NA
+# fieldLong$DX=as.integer(fieldLong$DX)
+# set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-1|fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-11), j="DX", value=-11)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-13), j="DX", value=-13)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-17), j="DX", value=-17)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-21), j="DX", value=-21)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-23), j="DX", value=-23)
+# set(fieldLong, i=which(fieldLong[["dxField"]]==-27), j="DX", value=-27)
+# fieldLong[,"arbField":=NULL]
+# fieldLong <- fieldLong[order(f.eid,-DX)]
+# fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+# fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+# for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+# fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
+# fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
+# fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
+# #fieldWide[fieldWide$`-17`=="-17",c("1","2","6","8","9","10","5")]=0
+# fieldWide[fieldWide$`-21`=="-21",c("3","4","11","12","13","5")]=NA
+# fieldWide[fieldWide$`-23`=="-23",c("3","4","11","12","13","5")]=NA
+# #fieldWide[fieldWide$`-27`=="-27",c("3","4","11","12","13","5")]=0
+# fieldWide[,c("NA","-11","-21","-13","-23","-17","-27"):=NULL]
+# fieldWide[,c("NA","-9","0"):=NULL]
+# fieldNames <- dataCoding[Coding=="1010",]
+# names(fieldNames)[2:3]=c("V1","V2")
+# fieldNames$V1=paste0("code",fieldNames$V1)
+# fieldNames$V2=gsub("[[:punct:]]", "_",fieldNames$V2)
+# names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
+# for(currentName in names(fieldWide)[grep("code",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.20107_20111_20110.0",currentName,"BIN",filter(fieldNames,V1==currentName)["V2"],sep = "_"))
+# bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
 
@@ -2330,8 +2331,30 @@ bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure := if
 
 #Updated  GWAS by proxy to include HES and self reported
 #AD, Used the Phenotype coding describe by Jimmy Liu in GWAX nature paper
-bd[,Alzheimer_GWAS_by_proxy_1stDegree_HES_selfreport:= ifelse(f_20107_20111_20110_0_code10_BIN_Alzheimer_s_disease_dementia=="1"|HES_p_F00_BIN_Dementia_in_Alzheimer_s_disease=="1"|HES_p_G30_BIN_Alzheimer_s_disease=="1"|f_20002_0_dxCode1263_BIN_dementia_alzheimers_cognitive_impairment=="1",1,ifelse(f_20107_20111_20110_0_code10_BIN_Alzheimer_s_disease_dementia=="0"&HES_p_F00_BIN_Dementia_in_Alzheimer_s_disease=="0"&HES_p_G30_BIN_Alzheimer_s_disease=="0"&f_20002_0_dxCode1263_BIN_dementia_alzheimers_cognitive_impairment=="0",0,NA))]
-bd[,Parkinsons_GWAS_by_proxy_1stDegree_HES_selfreport:=ifelse(f_20107_20111_20110_0_code11_BIN_Parkinson_s_disease=="1"|map2way3char_intCode1262_hesCodeG20_BIN_parkinsons_disease=="1",1,ifelse(f_20107_20111_20110_0_code11_BIN_Parkinson_s_disease=="0"&map2way3char_intCode1262_hesCodeG20_BIN_parkinsons_disease=="0",0,NA))]
+#F+M
+bd[,f_20107_20110_code1_BIN_Heart_disease:=ifelse(f_20107_0_code1_BIN_Heart_disease==1|f_20110_0_code1_BIN_Heart_disease==1,1,ifelse(f_20107_0_code1_BIN_Heart_disease==0&f_20110_0_code1_BIN_Heart_disease==0,0,NA))]
+bd[,f_20107_20110_code2_BIN_Stroke:=ifelse(f_20107_0_code2_BIN_Stroke==1|f_20110_0_code2_BIN_Stroke==1,1,ifelse(f_20107_0_code2_BIN_Stroke==0&f_20110_0_code2_BIN_Stroke==0,0,NA))]
+bd[,f_20107_20110_code3_BIN_Lung_cancer:=ifelse(f_20107_0_code3_BIN_Lung_cancer==1|f_20110_0_code3_BIN_Lung_cancer==1,1,ifelse(f_20107_0_code3_BIN_Lung_cancer==0&f_20110_0_code3_BIN_Lung_cancer==0,0,NA))]
+bd[,f_20107_20110_code4_BIN_Bowel_cancer:=ifelse(f_20107_0_code4_BIN_Bowel_cancer==1|f_20110_0_code4_BIN_Bowel_cancer==1,1,ifelse(f_20107_0_code4_BIN_Bowel_cancer==0&f_20110_0_code4_BIN_Bowel_cancer==0,0,NA))]
+bd[,f_20107_20110_code6_BIN_Chronic_bronchitis_emphysema:=ifelse(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema==1|f_20110_0_code6_BIN_Chronic_bronchitis_emphysema==1,1,ifelse(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema==0&f_20110_0_code6_BIN_Chronic_bronchitis_emphysema==0,0,NA))]
+bd[,f_20107_20110_code8_BIN_High_blood_pressure:=ifelse(f_20107_0_code8_BIN_High_blood_pressure==1|f_20110_0_code8_BIN_High_blood_pressure==1,1,ifelse(f_20107_0_code8_BIN_High_blood_pressure==0&f_20110_0_code8_BIN_High_blood_pressure==0,0,NA))]
+bd[,f_20107_20110_code9_BIN_Diabetes:=ifelse(f_20107_0_code9_BIN_Diabetes==1|f_20110_0_code9_BIN_Diabetes==1,1,ifelse(f_20107_0_code9_BIN_Diabetes==0&f_20110_0_code9_BIN_Diabetes==0,0,NA))]
+bd[,f_20107_20110_code10_BIN_Alzheimer_s_disease_dementia:=ifelse(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia==1|f_20110_0_code10_BIN_Alzheimer_s_disease_dementia==1,1,ifelse(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia==0&f_20110_0_code10_BIN_Alzheimer_s_disease_dementia==0,0,NA))]
+bd[,f_20107_20110_code11_BIN_Parkinson_s_disease:=ifelse(f_20107_0_code11_BIN_Parkinson_s_disease==1|f_20110_0_code11_BIN_Parkinson_s_disease==1,1,ifelse(f_20107_0_code11_BIN_Parkinson_s_disease==0&f_20110_0_code11_BIN_Parkinson_s_disease==0,0,NA))]
+bd[,f_20107_20110_code12_BIN_Severe_depression:=ifelse(f_20107_0_code12_BIN_Severe_depression==1|f_20110_0_code12_BIN_Severe_depression==1,1,ifelse(f_20107_0_code12_BIN_Severe_depression==0&f_20110_0_code12_BIN_Severe_depression==0,0,NA))]
+bd[,f_20107_20110_code13_BIN_Prostate_cancer:=ifelse(f_20107_0_code13_BIN_Prostate_cancer==1|f_20110_0_code13_BIN_Prostate_cancer==1,1,ifelse(f_20107_0_code13_BIN_Prostate_cancer==0&f_20110_0_code13_BIN_Prostate_cancer==0,0,NA))]
+#F+M+S
+bd[,f_20107_20111_20110_0_code1_BIN_Heart_disease:=ifelse(f_20107_0_code1_BIN_Heart_disease==1|f_20111_0_code1_BIN_Heart_disease==1|f_20110_0_code1_BIN_Heart_disease==1,1,ifelse(f_20107_0_code1_BIN_Heart_disease==0&f_20111_0_code1_BIN_Heart_disease==0&f_20110_0_code1_BIN_Heart_disease==0,0,NA))]
+bd[,f_20107_20111_20110_0_code2_BIN_Stroke:=ifelse(f_20107_0_code2_BIN_Stroke==1|f_20111_0_code2_BIN_Stroke==1|f_20110_0_code2_BIN_Stroke==1,1,ifelse(f_20107_0_code2_BIN_Stroke==0&f_20111_0_code2_BIN_Stroke==0&f_20110_0_code2_BIN_Stroke==0,0,NA))]
+bd[,f_20107_20111_20110_0_code3_BIN_Lung_cancer:=ifelse(f_20107_0_code3_BIN_Lung_cancer==1|f_20111_0_code3_BIN_Lung_cancer==1|f_20110_0_code3_BIN_Lung_cancer==1,1,ifelse(f_20107_0_code3_BIN_Lung_cancer==0&f_20111_0_code3_BIN_Lung_cancer==0&f_20110_0_code3_BIN_Lung_cancer==0,0,NA))]
+bd[,f_20107_20111_20110_0_code4_BIN_Bowel_cancer:=ifelse(f_20107_0_code4_BIN_Bowel_cancer==1|f_20111_0_code4_BIN_Bowel_cancer==1|f_20110_0_code4_BIN_Bowel_cancer==1,1,ifelse(f_20107_0_code4_BIN_Bowel_cancer==0&f_20111_0_code4_BIN_Bowel_cancer==0&f_20110_0_code4_BIN_Bowel_cancer==0,0,NA))]
+bd[,f_20107_20111_20110_0_code6_BIN_Chronic_bronchitis_emphysema:=ifelse(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema==1|f_20111_0_code6_BIN_Chronic_bronchitis_emphysema==1|f_20110_0_code6_BIN_Chronic_bronchitis_emphysema==1,1,ifelse(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema==0&f_20111_0_code6_BIN_Chronic_bronchitis_emphysema==0&f_20110_0_code6_BIN_Chronic_bronchitis_emphysema==0,0,NA))]
+bd[,f_20107_20111_20110_0_code8_BIN_High_blood_pressure:=ifelse(f_20107_0_code8_BIN_High_blood_pressure==1|f_20111_0_code8_BIN_High_blood_pressure==1|f_20110_0_code8_BIN_High_blood_pressure==1,1,ifelse(f_20107_0_code8_BIN_High_blood_pressure==0&f_20111_0_code8_BIN_High_blood_pressure==0&f_20110_0_code8_BIN_High_blood_pressure==0,0,NA))]
+bd[,f_20107_20111_20110_0_code9_BIN_Diabetes:=ifelse(f_20107_0_code9_BIN_Diabetes==1|f_20111_0_code9_BIN_Diabetes==1|f_20110_0_code9_BIN_Diabetes==1,1,ifelse(f_20107_0_code9_BIN_Diabetes==0&f_20111_0_code9_BIN_Diabetes==0&f_20110_0_code9_BIN_Diabetes==0,0,NA))]
+bd[,f_20107_20111_20110_0_code10_BIN_Alzheimer_s_disease_dementia:=ifelse(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia==1|f_20111_0_code10_BIN_Alzheimer_s_disease_dementia==1|f_20110_0_code10_BIN_Alzheimer_s_disease_dementia==1,1,ifelse(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia==0&f_20111_0_code10_BIN_Alzheimer_s_disease_dementia==0&f_20110_0_code10_BIN_Alzheimer_s_disease_dementia==0,0,NA))]
+bd[,f_20107_20111_20110_0_code11_BIN_Parkinson_s_disease:=ifelse(f_20107_0_code11_BIN_Parkinson_s_disease==1|f_20111_0_code11_BIN_Parkinson_s_disease==1|f_20110_0_code11_BIN_Parkinson_s_disease==1,1,ifelse(f_20107_0_code11_BIN_Parkinson_s_disease==0&f_20111_0_code11_BIN_Parkinson_s_disease==0&f_20110_0_code11_BIN_Parkinson_s_disease==0,0,NA))]
+bd[,f_20107_20111_20110_0_code12_BIN_Severe_depression:=ifelse(f_20107_0_code12_BIN_Severe_depression==1|f_20111_0_code12_BIN_Severe_depression==1|f_20110_0_code12_BIN_Severe_depression==1,1,ifelse(f_20107_0_code12_BIN_Severe_depression==0&f_20111_0_code12_BIN_Severe_depression==0&f_20110_0_code12_BIN_Severe_depression==0,0,NA))]
+bd[,f_20107_20111_20110_0_code13_BIN_Prostate_cancer:=ifelse(f_20107_0_code13_BIN_Prostate_cancer==1|f_20111_0_code13_BIN_Prostate_cancer==1|f_20110_0_code13_BIN_Prostate_cancer==1,1,ifelse(f_20107_0_code13_BIN_Prostate_cancer==0&f_20111_0_code13_BIN_Prostate_cancer==0&f_20110_0_code13_BIN_Prostate_cancer==0,0,NA))]
 
 #Remove a couple of the columns that I recoded into wide format but that are still in the data frame
 bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
@@ -2353,13 +2376,13 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09112017.csv")
+    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09182017.csv")
   }
 
 # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09112017.csv")
+write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09182017.csv")
 
 # #Kijoun needs seperate files for quant,bin, and covariates
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
@@ -2386,18 +2409,20 @@ quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 # write.table(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.phenoFile.08312017.txt",sep="\t")
 # write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.fieldNames.08312017.txt",sep="\t")
 # #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.forKijoung.08312017.COVAR.txt")
-write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.txt")
-write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.txt")
+#write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.txt")
+#write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.txt")
 write.table(bd[,c("FID","IID",binOutcome1.case200$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.200CaseMin.txt")
 write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.noBrain.txt")
 #Write Binary table with comments for first line
 connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
-writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/18/2017"),connectionBin) 
+writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/18/2017"),connectionBin)
+writeLines(paste("#Fixed issue with GWAX case-control assignment"),connectionBin)
 write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 #Write Quantitative File without Brain imaging with comments for first line
 connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt", open="wt") 
 writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 09/18/2017"),connectionQuant)
+writeLines(paste("#Fixed issue with GWAX case-control assignment"),connectionQuant)
 write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F) 
 close(connectionQuant) 
 print("time to write files:Stop")
