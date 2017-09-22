@@ -883,7 +883,7 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 
 ########################################################################################################################################
 
-#Aggregation of field code 21000(No age attached): Ethnicity
+#Aggregation of field code 21000 (No age attached): Ethnicity
 fieldArray=names(select(bd,c(starts_with("f.21000.0"))))
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
 set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
@@ -2269,8 +2269,8 @@ bd[,specialRequest_QUANT_LVEDVi := f_22421_2_0_f_QUANT_LV_end_diastolic_volume/s
 bd[,specialRequest_QUANT_urine_albumin_creatinine_ratio := f_30500_0_0_f_QUANT_Microalbumin_in_urine/f_30510_0_0_f_QUANT_Creatinine_enzymatic_in_urine]
 #FEV1/FVC ratio
 bd[,specialRequest_QUANT_FEV1_FVC_ratio := f_3063_0_f_QUANT_FEV1_maximumValue/f_3062_0_f_QUANT_FVC_maximumValue]
-#Take minimum of SRT which is the better of the 2 ears
-bd$specialRequest_QUANT_hear_loss_B <- apply(select(bd,c(starts_with("f_20021_"),starts_with("f_20019_0_0"))),1,min,na.rm=T)
+#Take maximum of SRT which is the better of the 2 ears
+bd$specialRequest_QUANT_hear_loss_B <- apply(select(bd,c(starts_with("f_20021_"),starts_with("f_20019_0_0"))),1,max,na.rm=T)
 set(bd,i=which(is.infinite(bd[["specialRequest_QUANT_hear_loss_B"]])),j="specialRequest_QUANT_hear_loss_B",value=NA)
 # Joint pain
 bd[,specialRequest_BIN_joint_pain := ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==1|bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==1,1,ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==0 & bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==0,0,NA))]
@@ -2322,6 +2322,16 @@ bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(b
 #Create osteo special request variable
 bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis==1,1,
   ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
+
+#OA hip
+bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
+#OA knee
+bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
+#OA hip and/or knee
+bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
 #renal kidney failure updated with block coding
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
@@ -2376,13 +2386,13 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09182017.csv")
+    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09202017.csv")
   }
 
 # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09182017.csv")
+write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09202017.csv")
 
 # #Kijoun needs seperate files for quant,bin, and covariates
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
@@ -2407,22 +2417,20 @@ quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 # #  write.table(select(bd,c(f_eid,contains("QUANT"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.QUANT.phenoFile.08312017.txt",sep="\t")
 # #  write.table(select(bd,c(f_eid,contains("_CAT_"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.CAT.phenoFile.08312017.txt",sep="\t")
 # write.table(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_"))),quote=F,row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.phenoFile.08312017.txt",sep="\t")
-# write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.fieldNames.08312017.txt",sep="\t")
+#write.table(names(select(bd,c("FID","IID",contains("_CAT_"),contains("BIN"),contains("QUANT"),contains("_COORD_"),contains("_DATE_")))),row.names=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.fieldNames.08312017.txt",sep="\t")
 # #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.forKijoung.08312017.COVAR.txt")
 #write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.txt")
 #write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.txt")
-write.table(bd[,c("FID","IID",binOutcome1.case200$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.200CaseMin.txt")
-write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.noBrain.txt")
+write.table(bd[,c("FID","IID",binOutcome1.case200$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09202017.BIN.200CaseMin.txt")
+write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09202017.QUANT.noBrain.txt")
 #Write Binary table with comments for first line
 connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
-writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/18/2017"),connectionBin)
-writeLines(paste("#Fixed issue with GWAX case-control assignment"),connectionBin)
+writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/22/2017"),connectionBin)
 write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 #Write Quantitative File without Brain imaging with comments for first line
 connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt", open="wt") 
-writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 09/18/2017"),connectionQuant)
-writeLines(paste("#Fixed issue with GWAX case-control assignment"),connectionQuant)
+writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 09/22/2017;Fixed issue with GWAX case-control assignment"),connectionQuant)
 write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F) 
 close(connectionQuant) 
 print("time to write files:Stop")
