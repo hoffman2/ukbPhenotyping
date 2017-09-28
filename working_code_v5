@@ -2320,7 +2320,12 @@ bd[, specialRequest_QUANT_FEV1_pred := NA]
 bd[, specialRequest_QUANT_FEV1_pred := as.double(specialRequest_QUANT_FEV1_pred)]
 #Using the coefficients from the linear model, predict FEV1 in the entire cohort.
 bd[,specialRequest_QUANT_FEV1_pred := predict(fev1.pred,bd)]
+#Set subjects with a non-reproducible 20152 score to NA 
+bd[,specialRequest_QUANT_FEV1_pred_strict := ifelse(is.na(f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred),NA,specialRequest_QUANT_FEV1_pred)]
+#Calculate FEV1 predicted percentage
 bd[,specialRequest_QUANT_FEV1_percent_pred:= (f_3063_0_f_QUANT_FEV1_maximumValue/specialRequest_QUANT_FEV1_pred)*100]
+#Strict FEV1 predicted percentage based on 20152
+bd[,specialRequest_QUANT_FEV1_percent_pred_strict:= ifelse(is.na(f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred),NA,specialRequest_QUANT_FEV1_percent_pred)]
 #Print Correlation between Tobin FEV predicted and new FEV1 predicted values
 c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test(bd$specialRequest_QUANT_FEV1_pred,bd$f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted)$estimate))[2]
 #COPD as defined by spirometry
@@ -2434,8 +2439,8 @@ quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 # #write.table(bd[,c("FID","IID",covarFiles$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes//UKB9888.forKijoung.08312017.COVAR.txt")
 #write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.BIN.txt")
 #write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09112017.QUANT.txt")
-write.table(bd[,c("FID","IID",binOutcome1.case200$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09252017.BIN.200CaseMin.txt")
-write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09252017.QUANT.noBrain.txt")
+#write.table(bd[,c("FID","IID",binOutcome1.case200$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09252017.BIN.200CaseMin.txt")
+#write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE],sep="\t",row.names=F,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.forKijoung.09252017.QUANT.noBrain.txt")
 #Write Binary table with comments for first line
 connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
 writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionBin)
@@ -2444,7 +2449,7 @@ close(connectionBin)
 #Write Quantitative File without Brain imaging with comments for first line
 connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt", open="wt") 
 writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionQuant)
-write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+write.table(bd[,c("FID","IID",quantOutcome1$V1,grep("Pack_years_of_smoking",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
 connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
 writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionAll)
