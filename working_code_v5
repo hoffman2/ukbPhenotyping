@@ -177,29 +177,41 @@ set(bd,i=which(is.infinite(bd[["f.47_f_QUANT_grip_strength_maximumValue"]])),j="
 bd[,f.47_46_QUANT_grip_strength_maximumValue := apply(select(bd,f.46_f_QUANT_grip_strength_maximumValue,f.47_f_QUANT_grip_strength_maximumValue),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.47_46_QUANT_grip_strength_maximumValue"]])),j="f.47_46_QUANT_grip_strength_maximumValue",value=NA)
 
+#####################################################################################################################################
 #Take maximum of first instance Field 3062 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
-#Also included 20152 which dewfined reproducibility of best measure
-bd[,f.3062.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3062.0.0,NA)]
-bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3062.0.1,NA)]
-bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3062.0.2,NA)]
+#Also included 20152 which defined reproducibility of best measure(1= reporudcible)
+bd[,f.3062.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3062.0.0,NA)]
+bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3062.0.1,NA)]
+bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3062.0.2,NA)]
 bd[,f.3062.0_f_QUANT_FVC_maximumValue := apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3062.0_f_QUANT_FVC_maximumValue"]])),j="f.3062.0_f_QUANT_FVC_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3063 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
 #Also included 20152 which dewfined reproducibility of best measure
-bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3063.0.0,NA)]
-bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3063.0.1,NA)]
-bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3063.0.2,NA)]
+bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3063.0.0,NA)]
+bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3063.0.1,NA)]
+bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3063.0.2,NA)]
 bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3064
-#Also included 20152 which dewfined reproducibility of best measure
-bd[,f.3064.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==0,f.3064.0.0,NA)]
-bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==0,f.3064.0.1,NA)]
-bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==0,f.3064.0.2,NA)]
+#Also included 20152 which defined reproducibility of best measure
+bd[,f.3064.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3064.0.0,NA)]
+bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3064.0.1,NA)]
+bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3064.0.2,NA)]
 bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
+#####################################################################################################################################
+#When predicting FEV1 need to use more stringent criteria for generating the FEV1pred
+#Need to use an "and" statement for the 20152 field
+bd[,f.3063.0.0_forFEV1_Pred :=ifelse((f.3061.0.0==0|f.3061.0.0==32)&f.20152.0.0==1,f.3063.0.0,NA)]
+bd[,f.3063.0.1_forFEV1_Pred :=ifelse((f.3061.0.1==0|f.3061.0.1==32)&f.20152.0.0==1,f.3063.0.1,NA)]
+bd[,f.3063.0.2_forFEV1_Pred :=ifelse((f.3061.0.2==0|f.3061.0.2==32)&f.20152.0.0==1,f.3063.0.2,NA)]
+bd[,f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred := apply(select(bd,contains("forFEV1_Pred")),1,max,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred",value=NA)
+
+#####################################################################################################################################
+
 
 #Mean of dystolic blood pressure Field 4079
 bd[,f.4079.0_f_QUANT_Diastolic_blood_pressure_mean := apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)]
@@ -2301,7 +2313,8 @@ bd[,fev1_pred_exclude:= ifelse(f_2316_0_0_f_BIN_Wheeze_or_whistling_in_the_chest
                       ifelse(f_20160_0_0_f_BIN_Ever_smoked==1|is.na(f_20160_0_0_f_BIN_Ever_smoked),1,0))))))))))))))]
 
 #Run regression model to get pred FEV1 using only subjects that did not meet exclusionary criteria set aboved
-fev1.pred=lm(data=bd[fev1_pred_exclude==0,],f_3063_0_f_QUANT_FEV1_maximumValue~f_21003_0_0_f_QUANT_Age_when_attended_assessment_centre+f_31_0_0_f_BIN_Sex+f_50_0_0_f_QUANT_Standing_height,na.action=na.exclude)
+#Fixed FEV1 prediction to only use subjects that meet martin tobin criteria based on both 3061 and 20150
+fev1.pred=lm(data=bd[fev1_pred_exclude==0,],f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred~f_21003_0_0_f_QUANT_Age_when_attended_assessment_centre+f_31_0_0_f_BIN_Sex+f_50_0_0_f_QUANT_Standing_height,na.action=na.exclude)
 #Create a new variable for the predicted values
 bd[, specialRequest_QUANT_FEV1_pred := NA]
 bd[, specialRequest_QUANT_FEV1_pred := as.double(specialRequest_QUANT_FEV1_pred)]
@@ -2386,13 +2399,13 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
     combineTable <- select(combineTable,contains("BIN"))
     #print(i)
-    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.09202017.csv")
+    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.csv")
   }
 
 # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.09202017.csv")
+write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.csv")
 
 # #Kijoun needs seperate files for quant,bin, and covariates
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
@@ -2435,8 +2448,9 @@ write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],connectionQuant,sep=
 close(connectionQuant)
 connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
 writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionAll)
-write.table(bd[,(names(bd) %in% "FID" | names(bd) %in% "IID"|names(bd) %like% "BIN"|names(bd) %like% "QUANT"),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),grep("QUANT",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
+write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.names.csv",sep=",",row.names=F,quote=F)
 
 print("time to write files:Stop")
 print(proc.time())
