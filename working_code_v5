@@ -179,26 +179,26 @@ set(bd,i=which(is.infinite(bd[["f.47_46_QUANT_grip_strength_maximumValue"]])),j=
 
 #####################################################################################################################################
 #Take maximum of first instance Field 3062 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
-#Also included 20152 which defined reproducibility of best measure(1= reporudcible)
-bd[,f.3062.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3062.0.0,NA)]
-bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3062.0.1,NA)]
-bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3062.0.2,NA)]
+bd[,f.3062.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32,f.3062.0.0,NA)]
+bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3062.0.1,NA)]
+bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3062.0.2,NA)]
 bd[,f.3062.0_f_QUANT_FVC_maximumValue := apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3062.0_f_QUANT_FVC_maximumValue"]])),j="f.3062.0_f_QUANT_FVC_maximumValue",value=NA)
+bd[,f.3062.0_f_QUANT_FVC_maximumValue_derived_ERS_ATS:=ifelse((f.3062.0_f_QUANT_FVC_maximumValue-f.3061.0.0)<=.150|(f.3062.0_f_QUANT_FVC_maximumValue-f.3061.0.1)<=.150|(f.3062.0_f_QUANT_FVC_maximumValue-f.3061.0.2)<=.150,f.3062.0_f_QUANT_FVC_maximumValue,NA)]
 
 #Take maximum of first instance Field 3063 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
 #Also included 20152 which dewfined reproducibility of best measure
-bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3063.0.0,NA)]
-bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3063.0.1,NA)]
-bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3063.0.2,NA)]
+bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32,f.3063.0.0,NA)]
+bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3063.0.1,NA)]
+bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3063.0.2,NA)]
 bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
 
 #Take maximum of first instance Field 3064
 #Also included 20152 which defined reproducibility of best measure
-bd[,f.3064.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32|f.20152.0.0==1,f.3064.0.0,NA)]
-bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32|f.20152.0.0==1,f.3064.0.1,NA)]
-bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32|f.20152.0.0==1,f.3064.0.2,NA)]
+bd[,f.3064.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32,f.3064.0.0,NA)]
+bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3064.0.1,NA)]
+bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3064.0.2,NA)]
 bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
 #####################################################################################################################################
@@ -211,7 +211,12 @@ bd[,f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred := apply(select(bd,contains(
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred",value=NA)
 
 #####################################################################################################################################
-
+#Derived my own ERS/ATS variable for blow reproducibility (same code as above)
+#Need second highest number after max fev
+bd[,f.3063.0_f_QUANT_FEV1_2nd_maximumValue := apply(select(bd,starts_with("f.3063.0.")),1,function(x) {sort(x,decreasing=T)[][2]})]
+set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_2nd_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_2nd_maximumValue",value=NA)
+bd[,f.20152.0_f_BIN_derived_ERS_ATS := ifelse(f.3063.0_f_QUANT_FEV1_maximumValue>=1&(f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.150 & !is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,
+  ifelse((f.3063.0_f_QUANT_FEV1_maximumValue < 1 & (f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.100)&!is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,0))]
 
 #Mean of dystolic blood pressure Field 4079
 bd[,f.4079.0_f_QUANT_Diastolic_blood_pressure_mean := apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)]
@@ -720,7 +725,8 @@ fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX"))
 fieldWide[,c("dxAge_NA","DX_NA"):=NULL]
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
 #Bug fix for subjects with all missing
-fieldWide[fieldWide$`DX_-9`==-9,c(2:ncol(fieldWide))]=NA
+#Not a bug, for nurses interview, if a subject reported no diseases then were considered a non-participant
+#fieldWide[fieldWide$`DX_-9`==-9,c(2:ncol(fieldWide))]=NA
 fieldWide[,c("-9","NA","0"):=NULL]
 #Use the data coding file to assign names to the wide formatted vairables
 fieldNames <- dataCoding[Coding=="6",]
@@ -2258,7 +2264,7 @@ for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {bd[,paste0("
 for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_chapter_p_",chapterHES,"_BIN"), value=1)}}
 
 # #Do the same thing for the cancer registry data
-# #Create a variable for each block, settin geveryone initially as a control
+# #Create a variable for each block, setting everyone initially as a control
 for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {bd[,paste0("f_40006_block_",blockHES,"_BIN") := 0]}
 # #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
 for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
@@ -2328,8 +2334,33 @@ bd[,specialRequest_QUANT_FEV1_percent_pred:= (f_3063_0_f_QUANT_FEV1_maximumValue
 bd[,specialRequest_QUANT_FEV1_percent_pred_strict:= ifelse(is.na(f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred),NA,specialRequest_QUANT_FEV1_percent_pred)]
 #Print Correlation between Tobin FEV predicted and new FEV1 predicted values
 c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test(bd$specialRequest_QUANT_FEV1_pred,bd$f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted)$estimate))[2]
-#COPD as defined by spirometry
-bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd==0 & !is.na(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd),0,ifelse(specialRequest_QUANT_FEV1_FVC_ratio < 0.7 & specialRequest_QUANT_FEV1_percent_pred < 80,1,NA))]
+
+###########################################################################################################################
+#COPD as defined by spirometry and self report (Based on discussions with Mathias, Dan, and Soumitra)
+#bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd==0 & !is.na(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd),0,ifelse(specialRequest_QUANT_FEV1_FVC_ratio < 0.7 & specialRequest_QUANT_FEV1_percent_pred < 80,1,NA))]
+#Extract primary ICD10 codes for asthma and COPD
+hesDataCOPDExacPrim <- hesDataPrim[diag %like% "J44",]
+hesDataAsthmaExac <- hesDataPrim[diag %like% "J45",]
+hesDataAsthmaExac<-hesDataAsthmaExac[!duplicated(hesDataAsthmaExac,by=c("eid")),]
+hesDataCOPDExacPrim<-hesDataCOPDExacPrim[!duplicated(hesDataCOPDExacPrim,by=c("eid")),]
+hesDataCOPDExacPrim[,copd_prim:=1]
+hesDataAsthmaExac[,asthma_prim:=1]
+bd <- merge(bd,hesDataCOPDExacPrim[,c("eid","copd_prim")],by.x="f_eid",by.y="eid",all.x=T)
+bd <- merge(bd,hesDataAsthmaExac[,c("eid","asthma_prim")],by.x="f_eid",by.y="eid",all.x=T)
+#Set NA to 0 for all subjects
+bd[,copd_prim:=ifelse(is.na(copd_prim),0,copd_prim)]
+bd[,asthma_prim:=ifelse(is.na(asthma_prim),0,asthma_prim)]
+#Create a spirometry based phenotype
+bd[,specialRequest_QUANT_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,0)]
+bd[,specialRequest_QUANT_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,0)]
+#Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and hes code "J44". Do this for strict and loose defined spirometry(field 20152)
+bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyLoose==0,0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyStrict==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyStrict==0,0,NA))]
+#Exclude Asthma subjects
+bd[,specialRequest_BIN_copdMappingLoose_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse((copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+
+###########################################################################################################################
 
 #Osteoarthiritis based on self report or HES
 #Fix 2 way mapping based on discussion with Robert Scott
@@ -2412,37 +2443,57 @@ quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
 write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.csv")
 
-# #Kijoun needs seperate files for quant,bin, and covariates
+#Create a list of the variables that we want to keep
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
-binOutcome1.case200 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.case200.ls",header=F,data.table=F)
+#binOutcome1.case200 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.case200.ls",header=F,data.table=F)
 quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
+#Not interested in Brain imaging data right now
 quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
 bd[,f_eid:=NULL]
 #Create a data frame of all the variables that are present in the phenotype matrix
 bdNames <- as.data.frame(cbind(names(bd),names(bd)))
-#Generate the set of variables that overlap between outcome and 
+#Generate the set of variables that overlap between the bd and priority list
 binOutcome1 <- inner_join(binOutcome1,bdNames)
 quantOutcome1 <- inner_join(quantOutcome1,bdNames)
 binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
 quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 
+#Create set of variables that we want to rank-normalize residuals
+bd_residualization  <- bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE]
+#Read in Ioanna's covarFile
+covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/500k_GWASdownload/DataQC/Ioanna/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
+#Merge in Ioanna's covar file
+bd_residualization <- merge(bd_residualization,covarFiles,by=c("IID","FID"),all.x=T)
+for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
+  residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+sex+chip,na.action=na.exclude)
+  bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+  bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+  bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+  set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+  print(phenoVariable)
+}
+#Remove the unnecessary columns
+bd_residualization<-bd_residualization[,c("FID","IID",grep("^f_",names(bd_residualization),value=T)),with=FALSE]
+#Merge in the residualized variables
+bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID",all.x=T)
+bd <- merge(bd,covarFiles,by=c("FID","IID"))
 #Remove HES cancer codes from phenotype file
 hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
 hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
 connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
-writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionBin)
+writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionBin)
 write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
-#Write Quantitative File without Brain imaging with comments for first line
-connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt", open="wt") 
-writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionQuant)
+#Write Quantitative File with Brain imaging with comments for first line
+connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt;ontains brain imaging", open="wt") 
+writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionQuant)
 write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
 connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
-writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 09/25/2017"),connectionAll)
-write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),grep("QUANT",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/06/2017;Brain imaging data was removed"),connectionAll)
+write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),grep("_residualizedRelated",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.names.csv",sep=",",quote=F)
 
