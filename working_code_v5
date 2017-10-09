@@ -2457,7 +2457,7 @@ bdNames <- as.data.frame(cbind(names(bd),names(bd)))
 #Generate the set of variables that overlap between the bd and priority list
 binOutcome1 <- inner_join(binOutcome1,bdNames)
 quantOutcome1 <- inner_join(quantOutcome1,bdNames)
-binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
+#binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
 quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 
 #Create set of variables that we want to rank-normalize residuals
@@ -2474,10 +2474,11 @@ for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
   print(phenoVariable)
 }
+
 #Remove the unnecessary columns
 bd_residualization<-bd_residualization[,c("FID","IID",grep("^f_",names(bd_residualization),value=T)),with=FALSE]
 #Merge in the residualized variables
-bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID",all.x=T)
+bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID",all.x=T))
 bd <- merge(bd,covarFiles,by=c("FID","IID"))
 #Remove HES cancer codes from phenotype file
 hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
@@ -2493,7 +2494,7 @@ write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],connectionQuant,sep=
 close(connectionQuant)
 connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
 writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/06/2017;Brain imaging data was removed"),connectionAll)
-write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1),grep("_residualizedRelated",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1,grep("_residualizedRelated",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.names.csv",sep=",",quote=F)
 
