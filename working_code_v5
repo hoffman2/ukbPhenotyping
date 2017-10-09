@@ -2443,13 +2443,15 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 # names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
 # write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.csv")
 
-#Create a list of the variables that we want to keep
+#Create a list of the variables that we want to keep or exclude
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
 #binOutcome1.case200 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.case200.ls",header=F,data.table=F)
 quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
 #Not interested in Brain imaging data right now
 quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
 quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/brain_imaging_variables.txt",header=F,data.table=F)
+nonPriorityPhenotypes <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/nonPriorityPhenotypes.txt",header=F)
+
 
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
@@ -2457,10 +2459,10 @@ bd[,f_eid:=NULL]
 #Create a data frame of all the variables that are present in the phenotype matrix
 bdNames <- as.data.frame(cbind(names(bd),names(bd)))
 #Generate the set of variables that overlap between the bd and priority list
-binOutcome1 <- inner_join(binOutcome1,bdNames)
-quantOutcome1 <- inner_join(quantOutcome1,bdNames)
+#binOutcome1 <- inner_join(binOutcome1,bdNames)
+#quantOutcome1 <- inner_join(quantOutcome1,bdNames)
 #binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
-quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
+#quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
 #Variable for removing brain imaging from phenotype file
 
@@ -2471,15 +2473,17 @@ bd <- merge(bd,covarFiles,by=c("FID","IID"),all.x=T)
 #Create set of variables that we want to rank-normalize residuals,need to explicitly mention smoking as its a binary phenotype
 bd_residualization <- bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],"f_20160_0_0_f_BIN_Ever_smoked"),with=FALSE]
 bd_residualization  <- bd_residualization[,quantOutcome1.Brain$V1:=NULL]
+bd_residualization  <- bd_residualization[,nonPriorityPhenotypes$V1:=NULL]
 #Merge in Ioanna's covar file
 for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
+  tryCatch({
   residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+sex+chip,na.action=na.exclude)
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
   set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
   print(phenoVariable)
-}
+},error=function(e){print(paste0("Error with:",phenoVariable))})}
 #Overwrite residualized variables where necessary with appropriate model
 #Ejection Fraction
 phenoVariable="f_22420_2_0_f_QUANT_LV_ejection_fraction"
