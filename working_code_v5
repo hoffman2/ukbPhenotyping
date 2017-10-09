@@ -2423,25 +2423,25 @@ bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 #Merge in Ioanna's QCd file, performing a left join since I want to keep all phenotype data for now
 #bd <- merge(bd,newPCsChipCovar,by.x="f_eid",by.y="IID",all.x=TRUE)
 
-#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-{combineTable<-data.frame(matrix(nrow=2,ncol=2))
-  names(combineTable)=c("remove1","remove2")
-  for (i in names(bd)[grep("BIN",names(bd))]) {
-    tryCatch({
-    myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-    combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-    #print(i)
- },error=function(e){}) }
-    combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-    combineTable <- select(combineTable,contains("BIN"))
-    #print(i)
-    write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.csv")
-  }
+# # #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
+# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
+#   names(combineTable)=c("remove1","remove2")
+#   for (i in names(bd)[grep("BIN",names(bd))]) {
+#     tryCatch({
+#     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+#     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+#     #print(i)
+#  },error=function(e){}) }
+#     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+#     combineTable <- select(combineTable,contains("BIN"))
+#     #print(i)
+#     write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.tables.csv")
+#   }
 
-# #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
-quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
-names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.csv")
+# # #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
+# quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
+# names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
+# write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.tables.csv")
 
 #Create a list of the variables that we want to keep
 binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
@@ -2449,6 +2449,8 @@ binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/
 quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
 #Not interested in Brain imaging data right now
 quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
+quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/brain_imaging_variables.txt",header=F,data.table=F)
+
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
 bd[,f_eid:=NULL]
@@ -2459,13 +2461,17 @@ binOutcome1 <- inner_join(binOutcome1,bdNames)
 quantOutcome1 <- inner_join(quantOutcome1,bdNames)
 #binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
 quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
+quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
+#Variable for removing brain imaging from phenotype file
 
-#Create set of variables that we want to rank-normalize residuals
-bd_residualization  <- bd[,c("FID","IID",quantOutcome1.noBrain$V1),with=FALSE]
+
 #Read in Ioanna's covarFile
 covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/500k_GWASdownload/DataQC/Ioanna/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
+bd <- merge(bd,covarFiles,by=c("FID","IID"),all.x=T)
+#Create set of variables that we want to rank-normalize residuals,need to explicitly mention smoking as its a binary phenotype
+bd_residualization <- bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],"f_20160_0_0_f_BIN_Ever_smoked"),with=FALSE]
+bd_residualization  <- bd_residualization[,quantOutcome1.Brain$V1:=NULL]
 #Merge in Ioanna's covar file
-bd_residualization <- merge(bd_residualization,covarFiles,by=c("IID","FID"),all.x=T)
 for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+sex+chip,na.action=na.exclude)
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
@@ -2474,27 +2480,81 @@ for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
   print(phenoVariable)
 }
+#Overwrite residualized variables where necessary with appropriate model
+#Ejection Fraction
+phenoVariable="f_22420_2_0_f_QUANT_LV_ejection_fraction"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+sex+chip+f_50_0_0_f_QUANT_Standing_height+f_21002_0_0_f_QUANT_Weight,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#FEV1
+#Requires age squared varaible
+bd_residualization[,ageSquared := age^2]
+phenoVariable="f_3063_0_f_QUANT_FEV1_maximumValue"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#FVC
+#Requires age squared variable
+phenoVariable="f_3062_0_f_QUANT_FVC_maximumValue"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#FEV1/FVC ratio
+#Requires age squared variable
+phenoVariable="specialRequest_QUANT_FEV1_FVC_ratio"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#FEV1/FVC smoked only ratio
+#Requires age squared variable
+phenoVariable="specialRequest_QUANT_FEV1_ever_smoked_only"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#Asthma(no age covariate to be used)
+phenoVariable="f_20009_0_dxAgeCode1111_QUANT_asthma"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
 
 #Remove the unnecessary columns
 bd_residualization<-bd_residualization[,c("FID","IID",grep("^f_",names(bd_residualization),value=T)),with=FALSE]
 #Merge in the residualized variables
-bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID",all.x=T))
-bd <- merge(bd,covarFiles,by=c("FID","IID"))
+bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID"),all.x=T)
 #Remove HES cancer codes from phenotype file
 hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
 hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
-connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
-writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionBin)
-write.table(bd[,c("FID","IID",binOutcome1$V1),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
-close(connectionBin) 
+#Remove Brain imaging variables from full phentoype matrix
+bd<- bd[,quantOutcome1.Brain$V1:=NULL]
+
+#Write Binary File
+# connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
+# writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionBin)
+# write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+# close(connectionBin) 
+
 #Write Quantitative File with Brain imaging with comments for first line
-connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt;ontains brain imaging", open="wt") 
-writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionQuant)
-write.table(bd[,c("FID","IID",quantOutcome1$V1),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
-close(connectionQuant)
-connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
+# connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt;Does not contain brain imaging", open="wt") 
+# writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionQuant)
+# write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+# close(connectionQuant)
+# connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
+
+#Write All to one file
 writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/06/2017;Brain imaging data was removed"),connectionAll)
-write.table(bd[,c("FID","IID",quantOutcome1.noBrain$V1,grep("_residualizedRelated",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),with=FALSE],grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.names.csv",sep=",",quote=F)
 
