@@ -2484,6 +2484,7 @@ for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
   print(phenoVariable)
 },error=function(e){print(paste0("Error with:",phenoVariable))})}
+
 #Overwrite residualized variables where necessary with appropriate model
 #Ejection Fraction
 phenoVariable="f_22420_2_0_f_QUANT_LV_ejection_fraction"
@@ -2540,27 +2541,28 @@ bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",nam
 #Remove HES cancer codes from phenotype file
 hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
 hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
-#Remove Brain imaging variables from full phentoype matrix
-bd<- bd[,quantOutcome1.Brain$V1:=NULL]
-
-#Write Binary File
-# connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
-# writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionBin)
-# write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
-# close(connectionBin) 
-
-#Write Quantitative File with Brain imaging with comments for first line
-# connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt;Does not contain brain imaging", open="wt") 
-# writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/06/2017"),connectionQuant)
-# write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
-# close(connectionQuant)
-# connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
+#Remove non essential variables variables from full phentoype matrix
+bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 
 #Write All to one file
-writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/06/2017;Brain imaging data was removed"),connectionAll)
-write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),with=FALSE],grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+connectionAll <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.ALL.txt", open="wt") 
+writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/09/2017;Brain imaging data was removed"),connectionAll)
+write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.names.csv",sep=",",quote=F)
+
+#Write Binary File
+connectionBin <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.BIN.txt", open="wt") 
+writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/09/2017"),connectionBin)
+write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+close(connectionBin) 
+
+#Write Quantitative File with Brain imaging with comments for first line
+connectionQuant <- file("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/customPhenotypes/UKB9888.QUANT.txt", open="wt")
+writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/09/2017;Does not contain brain imaging"),connectionQuant)
+write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+close(connectionQuant)
+
 
 print("time to write files:Stop")
 print(proc.time())
