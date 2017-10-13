@@ -1790,7 +1790,7 @@ phewasDefinition$PHENOTYPE=gsub("[[:punct:]]", "_",phewasDefinition$PHENOTYPE)
 #Rename diagnosis columns to match for both prim and sec
 names(hesDataPrim)[5]="diag"
 names(hesDataSec)[4]="diag"
-#Combine prim and sec
+#Only use hesPrim but renaming to combine to reduce variable name changes
 hesDataCombined<-rbind(hesDataPrim[,c(1,5)])
 #Add "p_" to each variablte)
 #Roll up codes based on left three characters
@@ -1988,103 +1988,103 @@ print(proc.time())
 #####################################################################################################################################
 #Two Way and Three Way Mapping (Combining phenotypes from different data souces such as nurses interview and HES)
 #####################################################################################################################################
+#Following code is depreacted due to updates by RWD
+# print("Run 2 way mapping of variables")
+# twoWayMapping <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
+# twoWayMapping$V3=gsub("[[:punct:]]", "_",twoWayMapping$V3)
+# twoWayMapping$V3=gsub(" ", "_",twoWayMapping$V3)
+# twoWayMapping$V3=gsub("_{1,}", "_",twoWayMapping$V3)
+# twoWayMapping$V3=gsub(" {1,}", "_",twoWayMapping$V3)
+# twoWayMapping$V3=gsub("_$", "",twoWayMapping$V3)
+# twoWayMapping4or5 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
+# twoWayMapping4or5$V3=gsub("[[:punct:]]", "_",twoWayMapping4or5$V3)
+# twoWayMapping4or5$V3=gsub(" ", "_",twoWayMapping4or5$V3)
+# twoWayMapping4or5$V3=gsub("_{1,}", "_",twoWayMapping4or5$V3)
+# twoWayMapping4or5$V3=gsub(" {1,}", "_",twoWayMapping4or5$V3)
+# twoWayMapping4or5$V3=gsub("_$", "",twoWayMapping4or5$V3)
+# #Since we will be hitting errors where certain ICD10 columns arent present due to no cases being identified, I went ahead and added in an additional column called "zeroColumn", where each row value is set to 0. 
+# #This will be used in the steps below where we need to perform ifelse statements. In situations where a code's column is not find, the zeroColumn will be used as a surrogate
+# #Again this is assuming that the reason that the HES code column is not present is because no cases where identified during wide formatting.
+# bd$zeroColumn=0
+# #Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview. 
+# #Controls are those subjects that have a 0 for both data types, cases can be from either or
+# #This code is dependent on naming scheme prefix!
+# #Start by defining function
+# nurseInt_hes_2Way_function=function(interviewCode,hesCode,phenoDescrip){
+#   #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+#   fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+#   fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
+#   #fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
+#   fieldHES=grep(x=names(bd),pattern=(paste0("HES_p_",hesCode)),value=TRUE)
+#   fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
+#   fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
+#   #print(fieldCombined)
+#   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+# }
 
-print("Run 2 way mapping of variables")
-twoWayMapping <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_3characterHes.txt",header=F,colClasses=c("string","string","string"))
-twoWayMapping$V3=gsub("[[:punct:]]", "_",twoWayMapping$V3)
-twoWayMapping$V3=gsub(" ", "_",twoWayMapping$V3)
-twoWayMapping$V3=gsub("_{1,}", "_",twoWayMapping$V3)
-twoWayMapping$V3=gsub(" {1,}", "_",twoWayMapping$V3)
-twoWayMapping$V3=gsub("_$", "",twoWayMapping$V3)
-twoWayMapping4or5 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/map2Way_4or5characterHes.txt",header=F,colClasses=c("string","string","string"))
-twoWayMapping4or5$V3=gsub("[[:punct:]]", "_",twoWayMapping4or5$V3)
-twoWayMapping4or5$V3=gsub(" ", "_",twoWayMapping4or5$V3)
-twoWayMapping4or5$V3=gsub("_{1,}", "_",twoWayMapping4or5$V3)
-twoWayMapping4or5$V3=gsub(" {1,}", "_",twoWayMapping4or5$V3)
-twoWayMapping4or5$V3=gsub("_$", "",twoWayMapping4or5$V3)
-#Since we will be hitting errors where certain ICD10 columns arent present due to no cases being identified, I went ahead and added in an additional column called "zeroColumn", where each row value is set to 0. 
-#This will be used in the steps below where we need to perform ifelse statements. In situations where a code's column is not find, the zeroColumn will be used as a surrogate
-#Again this is assuming that the reason that the HES code column is not present is because no cases where identified during wide formatting.
-bd$zeroColumn=0
-#Perform Two Way mapping for subjects using HES 3 digit code verus nurses interview. 
-#Controls are those subjects that have a 0 for both data types, cases can be from either or
-#This code is dependent on naming scheme prefix!
-#Start by defining function
-nurseInt_hes_2Way_function=function(interviewCode,hesCode,phenoDescrip){
-  #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
-  fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
-  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
-  #fieldHES=names(select(bd,c(starts_with(paste0("HES_p_",hesCode)))))
-  fieldHES=grep(x=names(bd),pattern=(paste0("HES_p_",hesCode)),value=TRUE)
-  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
-  fieldCombined=paste("map2way3char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
-  #print(fieldCombined)
-  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
-}
+# #Run the two way mapping function in a for loop
+# for(i in seq_along(twoWayMapping$V1)) {
+#   tryCatch({
+#   x=twoWayMapping[[i,1]]
+#   y=twoWayMapping[[i,2]]
+#   z=twoWayMapping[[i,3]]
+#   nurseInt_hes_2Way_function(x,y,z)
+#   },error=function(e){print(paste0("Error with:",x,"_",y))})}
 
-#Run the two way mapping function in a for loop
-for(i in seq_along(twoWayMapping$V1)) {
-  tryCatch({
-  x=twoWayMapping[[i,1]]
-  y=twoWayMapping[[i,2]]
-  z=twoWayMapping[[i,3]]
-  nurseInt_hes_2Way_function(x,y,z)
-  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+# #####################################################################################################################################
+# print("Run 2 way mapping of variables requiring the full ICD10 definition and not phewas codes")
+# #Run the two way mapping with ICD10 codes that require 4 and 5 digits
+# #Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
+# phewasMappingDefinitions <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
+# phewasMappingDefinitions$PHENOTYPE=gsub("[[:punct:]]", "_",phewasMappingDefinitions$PHENOTYPE)
+# phewasMappingDefinitions$icd10=paste0("p_",phewasMappingDefinitions$icd10)
+# names(phewasMappingDefinitions)=c("pheno","PHENOTYPE")
+# hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+# hesDataSec <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
+# names(hesDataPrim)[5]="diag"
+# names(hesDataSec)[4]="diag"
+# hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
+# hesDataCombined$diag=paste0("p_",substr(hesDataCombined$diag,1,5)) #Changed to 5 characters
+# names(hesDataCombined)[1:2]=c("f.eid","dxField")
+# fieldLong<-hesDataCombined
+# fieldLong$DX=NA
+# fieldLong$DX=as.integer(fieldLong$DX)
+# fieldLong[,DX := 1]
+# #Included this extra step here since we dont need all ICD10 codes
+# fieldLong<-fieldLong[phewasMappingDefinitions,nomatch="0",on=c("dxField"="pheno")][,-4]
+# fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
+# fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
+# for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
+# for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("HES_4or5_char",currentName,"BIN",filter(phewasMappingDefinitions,pheno==currentName)["PHENOTYPE"],sep = "_"))
+# setkey(fieldWide,f.eid)
+# #bdIDs <- bd[,c(1,1)]
+# #bdIDs <- setnames(bdIDs,c(1,2),c("f.eid","f.eid2"))
+# setkey(bd,f.eid)
+# bd <- merge(bd,fieldWide,all.x=T)
+# #Replace NAs with 0 in bd for the HES columns as those are subjects with no reported ICD10 codes
+# for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
+# ####################################################
+# #Modify function to use this new file and naming scheme
+# nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode,phenoDescrip){
+#   #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
+#   fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
+#   fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
+#   #fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
+#   fieldHES=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_",hesCode)),value=TRUE)
+#   fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
+#   fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
+#   #print(fieldCombined)
+#   bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
+# }
 
-#####################################################################################################################################
-print("Run 2 way mapping of variables requiring the full ICD10 definition and not phewas codes")
-#Run the two way mapping with ICD10 codes that require 4 and 5 digits
-#Need a new icd10 code file because the one I was originally provided with only had 3 digit codes(Took the file from RS 2way3way mapping)
-phewasMappingDefinitions <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/namesFor2WayMapping.4or5char.txt",header=T,sep="\t")
-phewasMappingDefinitions$PHENOTYPE=gsub("[[:punct:]]", "_",phewasMappingDefinitions$PHENOTYPE)
-phewasMappingDefinitions$icd10=paste0("p_",phewasMappingDefinitions$icd10)
-names(phewasMappingDefinitions)=c("pheno","PHENOTYPE")
-hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
-hesDataSec <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
-names(hesDataPrim)[5]="diag"
-names(hesDataSec)[4]="diag"
-hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
-hesDataCombined$diag=paste0("p_",substr(hesDataCombined$diag,1,5)) #Changed to 5 characters
-names(hesDataCombined)[1:2]=c("f.eid","dxField")
-fieldLong<-hesDataCombined
-fieldLong$DX=NA
-fieldLong$DX=as.integer(fieldLong$DX)
-fieldLong[,DX := 1]
-#Included this extra step here since we dont need all ICD10 codes
-fieldLong<-fieldLong[phewasMappingDefinitions,nomatch="0",on=c("dxField"="pheno")][,-4]
-fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
-fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
-for(currentName in names(fieldWide)) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
-for(currentName in names(fieldWide)[grep("p_",names(fieldWide))]) setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("HES_4or5_char",currentName,"BIN",filter(phewasMappingDefinitions,pheno==currentName)["PHENOTYPE"],sep = "_"))
-setkey(fieldWide,f.eid)
-#bdIDs <- bd[,c(1,1)]
-#bdIDs <- setnames(bdIDs,c(1,2),c("f.eid","f.eid2"))
-setkey(bd,f.eid)
-bd <- merge(bd,fieldWide,all.x=T)
-#Replace NAs with 0 in bd for the HES columns as those are subjects with no reported ICD10 codes
-for(currentField in names(fieldWide)[2:length(names(fieldWide))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
-####################################################
-#Modify function to use this new file and naming scheme
-nurseInt_hes_2Way_5char_function=function(interviewCode,hesCode,phenoDescrip){
-  #fieldInterview=names(select(bd,c(starts_with(paste0("f.20002.0_dxCode",interviewCode)))))
-  fieldInterview=grep(x=names(bd),pattern=(paste0("^f\\.","20002\\.0_dxCode",interviewCode)),value=TRUE)
-  fieldInterview=ifelse(length(fieldInterview)==0,"zeroColumn",fieldInterview)
-  #fieldHES=names(select(bd,c(starts_with(paste0("HES_4or5_char_p_",hesCode)))))
-  fieldHES=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_",hesCode)),value=TRUE)
-  fieldHES=ifelse(length(fieldHES)==0,"zeroColumn",fieldHES)
-  fieldCombined=paste("map2way4or5char",paste0("intCode",interviewCode),paste0("hesCode",hesCode),"BIN",phenoDescrip,sep="_")
-  #print(fieldCombined)
-  bd[,paste0(fieldCombined) := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
-}
-
-#Run the two way mapping function in a for loop
-for(i in seq_along(twoWayMapping4or5$V1)) {
-  tryCatch({
-  x=twoWayMapping4or5[[i,1]]
-  y=twoWayMapping4or5[[i,2]]
-  z=twoWayMapping4or5[[i,3]]
-  nurseInt_hes_2Way_5char_function(x,y,z)
-  },error=function(e){print(paste0("Error with:",x,"_",y))})}
+# #Run the two way mapping function in a for loop
+# for(i in seq_along(twoWayMapping4or5$V1)) {
+#   tryCatch({
+#   x=twoWayMapping4or5[[i,1]]
+#   y=twoWayMapping4or5[[i,2]]
+#   z=twoWayMapping4or5[[i,3]]
+#   nurseInt_hes_2Way_5char_function(x,y,z)
+#   },error=function(e){print(paste0("Error with:",x,"_",y))})}
 
 #####################################################################################################################################
 #Create new set of variables based on HES block coding(See HES Ontology)
@@ -2098,7 +2098,7 @@ for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_$","",hesOntology[[i]])}
 #Create a variable name for the cancer registry data which follows same phewas coding except it has a different prefix
 hesOntology$cancerRegVar=gsub("HES_p_","f_40006_0_p_",hesOntology$hesCode)
 
-#Create a variable for each block, setting geveryone initially as a control
+#Create a variable for each block, setting everyone initially as a control
 for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {bd[,paste0("HES_block_p_",blockHES,"_BIN") := 0]}
 #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
 for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {phenoList=hesOntology[CAT2==blockHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_block_p_",blockHES,"_BIN"), value=1)}}
@@ -2131,7 +2131,6 @@ for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) 
 #Column L(FINAL_ROOT); Return the root HES code for each row by using the root length calculated in column K: =LEFT(C2,K2)
 #I then pasted Columns A,B,C,L into a new sheet
 ####################################################################################################################################
-
 
 #RWD has reformated the 2 way mapping with new mappings as well
 twoWayMapping <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKBB_Ill_2_ICD10_mapped_RS_CT_JDH.txt",header=T,colClasses="character")
@@ -2226,135 +2225,135 @@ for(currentName in names(bd)[grep("map2way_NI_code",names(bd))]) setnames(bd,nam
   ####################################################################################################################################
 #Map 3 way sets.Touch screen,Nurses interview and HES
 #A little unstructered to run through a function
+#Deprecated due to new RWD mapping
+# #DVT
+# code1=grep(x=names(bd),pattern=(paste0("^f\\.6152\\.0_code5")),value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern=(paste0("^f\\.20002\\.0_dxCode1094")),value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code3=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I801")))
+# code3=ifelse(length(code3)==0,"zeroColumn",code3)
+# code4=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I802")))
+# code4=ifelse(length(code4)==0,"zeroColumn",code4)
+# group="dvt"
+# bd[, map3way_f6152_code5_intCode1094_hesCode_1801_1802_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0,0,NA))]
 
-#DVT
-code1=grep(x=names(bd),pattern=(paste0("^f\\.6152\\.0_code5")),value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern=(paste0("^f\\.20002\\.0_dxCode1094")),value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code3=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I801")))
-code3=ifelse(length(code3)==0,"zeroColumn",code3)
-code4=grep(x=names(bd),pattern=(paste0("HES_4or5_char_p_I802")))
-code4=ifelse(length(code4)==0,"zeroColumn",code4)
-group="dvt"
-bd[, map3way_f6152_code5_intCode1094_hesCode_1801_1802_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0,0,NA))]
+# #emphysema_bronchitis
+# code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code6",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1113",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
+# code3=ifelse(length(code3)==0,"zeroColumn",code3)
+# code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
+# code4=ifelse(length(code4)==0,"zeroColumn",code4)
+# code5=grep(x=names(bd),pattern="HES_p_J41",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_J42",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
+# code7=ifelse(length(code7)==0,"zeroColumn",code7)
+# code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+# bd[, map3way_f6152_code6_intCode1113_1412_1472_hesCode_J41_J42_J43_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0& bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
 
-#emphysema_bronchitis
-code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code6",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1113",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1412",value=TRUE)
-code3=ifelse(length(code3)==0,"zeroColumn",code3)
-code4=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1472",value=TRUE)
-code4=ifelse(length(code4)==0,"zeroColumn",code4)
-code5=grep(x=names(bd),pattern="HES_p_J41",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_J42",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-code7=grep(x=names(bd),pattern="HES_p_J43",value=TRUE)
-code7=ifelse(length(code7)==0,"zeroColumn",code7)
-code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
-code8=ifelse(length(code8)==0,"zeroColumn",code8)
-bd[, map3way_f6152_code6_intCode1113_1412_1472_hesCode_J41_J42_J43_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0& bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+# #pulmonary_embolism
+# code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code7",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1093",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_p_I26",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# bd[, map3way_f6152_code7_intCode1093_hesCode_I26_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
 
-#pulmonary_embolism
-code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code7",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1093",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_p_I26",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-bd[, map3way_f6152_code7_intCode1093_hesCode_I26_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+# #asthma
+# code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code8",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1111",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_p_J45",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_J46",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code8=grep(x=names(bd),pattern="f\\.22127\\.0",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+# bd[, map3way_f6152_code8_intCode1111_hesCode_J45_J46_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
 
-#asthma
-code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code8",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1111",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_p_J45",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_J46",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-code8=grep(x=names(bd),pattern="f\\.22127\\.0",value=TRUE)
-code8=ifelse(length(code8)==0,"zeroColumn",code8)
-bd[, map3way_f6152_code8_intCode1111_hesCode_J45_J46_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+# #hay_fever_eczema
+# code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code9",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1387",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1452",value=TRUE)
+# code3=ifelse(length(code3)==0,"zeroColumn",code3)
+# code5=grep(x=names(bd),pattern="HES_p_L20",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_J30",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code8=grep(x=names(bd),pattern="f\\.22126\\.0",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+# bd[, map3way_f6152_code9_intCode1387_1452_hesCode_L20_J30_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
 
-#hay_fever_eczema
-code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code9",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1387",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1452",value=TRUE)
-code3=ifelse(length(code3)==0,"zeroColumn",code3)
-code5=grep(x=names(bd),pattern="HES_p_L20",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_J30",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-code8=grep(x=names(bd),pattern="f\\.22126\\.0",value=TRUE)
-code8=ifelse(length(code8)==0,"zeroColumn",code8)
-bd[, map3way_f6152_code9_intCode1387_1452_hesCode_L20_J30_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
+# #myocardial_infarction
+# code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code1",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1075",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_p_I21",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# bd[, map3way_f6150_code1_intCode1075_hesCode_I21_I22_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0,0,NA))]
 
-#myocardial_infarction
-code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code1",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1075",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_p_I21",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-bd[, map3way_f6150_code1_intCode1075_hesCode_I21_I22_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0,0,NA))]
+# #angina
+# code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code2",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1074",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_p_I20",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# bd[, map3way_f6150_code2_intCode1074_hesCode_I20_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
 
-#angina
-code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code2",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1074",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_p_I20",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-bd[, map3way_f6150_code2_intCode1074_hesCode_I20_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+# #stroke
+# code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code3",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1081",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_p_I60",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_I61",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code7=grep(x=names(bd),pattern="HES_p_I62",value=TRUE)
+# code7=ifelse(length(code7)==0,"zeroColumn",code7)
+# code8=grep(x=names(bd),pattern="HES_p_I63",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+# bd[, map3way_f6150_code3_intCode1081_hesCode_I60_I61_I62_I63_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
 
-#stroke
-code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code3",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1081",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_p_I60",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_I61",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-code7=grep(x=names(bd),pattern="HES_p_I62",value=TRUE)
-code7=ifelse(length(code7)==0,"zeroColumn",code7)
-code8=grep(x=names(bd),pattern="HES_p_I63",value=TRUE)
-code8=ifelse(length(code8)==0,"zeroColumn",code8)
-bd[, map3way_f6150_code3_intCode1081_hesCode_I60_I61_I62_I63_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
+# #hypertension
+# code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code4",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1065",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1072",value=TRUE)
+# code3=ifelse(length(code3)==0,"zeroColumn",code3)
+# code5=grep(x=names(bd),pattern="HES_p_I10",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# code6=grep(x=names(bd),pattern="HES_p_I11",value=TRUE)
+# code6=ifelse(length(code6)==0,"zeroColumn",code6)
+# code7=grep(x=names(bd),pattern="HES_p_I12",value=TRUE)
+# code7=ifelse(length(code7)==0,"zeroColumn",code7)
+# code8=grep(x=names(bd),pattern="HES_p_I13",value=TRUE)
+# code8=ifelse(length(code8)==0,"zeroColumn",code8)
+# bd[, map3way_f6150_code4_intCode1065_1072_hesCode_I10_I11_I12_I13_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
 
-#hypertension
-code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code4",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1065",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code3=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1072",value=TRUE)
-code3=ifelse(length(code3)==0,"zeroColumn",code3)
-code5=grep(x=names(bd),pattern="HES_p_I10",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-code6=grep(x=names(bd),pattern="HES_p_I11",value=TRUE)
-code6=ifelse(length(code6)==0,"zeroColumn",code6)
-code7=grep(x=names(bd),pattern="HES_p_I12",value=TRUE)
-code7=ifelse(length(code7)==0,"zeroColumn",code7)
-code8=grep(x=names(bd),pattern="HES_p_I13",value=TRUE)
-code8=ifelse(length(code8)==0,"zeroColumn",code8)
-bd[, map3way_f6150_code4_intCode1065_1072_hesCode_I10_I11_I12_I13_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
-
-#gestational_diabetes
-code1=grep(x=names(bd),pattern="^f\\.4041\\.0",value=TRUE)
-code1=ifelse(length(code1)==0,"zeroColumn",code1)
-code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1221",value=TRUE)
-code2=ifelse(length(code2)==0,"zeroColumn",code2)
-code5=grep(x=names(bd),pattern="HES_4or5_char_p_O244",value=TRUE)
-code5=ifelse(length(code5)==0,"zeroColumn",code5)
-bd[, map3way_f4041_intCode1221_hesCode_O244_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
+# #gestational_diabetes
+# code1=grep(x=names(bd),pattern="^f\\.4041\\.0",value=TRUE)
+# code1=ifelse(length(code1)==0,"zeroColumn",code1)
+# code2=grep(x=names(bd),pattern="^f\\.20002\\.0_dxCode1221",value=TRUE)
+# code2=ifelse(length(code2)==0,"zeroColumn",code2)
+# code5=grep(x=names(bd),pattern="HES_4or5_char_p_O244",value=TRUE)
+# code5=ifelse(length(code5)==0,"zeroColumn",code5)
+# bd[, map3way_f4041_intCode1221_hesCode_O244_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
 
 #Cancer
 #created a new variable for 40009 where I replaced NAs with 0s, as subjects without a cancer diagnosis do not contribute to the column(e.g. they are NAs)
@@ -2385,7 +2384,6 @@ for(i in names(hesOntology)) {hesOntology[[i]]=gsub("[[:punct:]]", "_",hesOntolo
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub(" {1,}","_",hesOntology[[i]])}
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_{1,}","_",hesOntology[[i]])}
 for(i in names(hesOntology)) {hesOntology[[i]]=gsub("_$","",hesOntology[[i]])}
-
 
 #Create a variable for each block, setting geveryone initially as a control
 for(blockHES in hesOntology[!duplicated(hesOntology$CAT2),CAT2]) {bd[,paste0("HES_block_p_",blockHES,"_BIN") := 0]}
@@ -2471,26 +2469,41 @@ c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test
 #COPD as defined by spirometry and self report (Based on discussions with Mathias, Dan, and Soumitra)
 #bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd==0 & !is.na(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd),0,ifelse(specialRequest_QUANT_FEV1_FVC_ratio < 0.7 & specialRequest_QUANT_FEV1_percent_pred < 80,1,NA))]
 #Extract primary ICD10 codes for asthma and COPD
+hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
 hesDataCOPDExacPrim <- hesDataPrim[diag %like% "J44",]
+hesDataCOPDExacPrimSecondary <- hesDataCombined[diag %like% "J44",]
 hesDataAsthmaExac <- hesDataPrim[diag %like% "J45",]
-hesDataAsthmaExac<-hesDataAsthmaExac[!duplicated(hesDataAsthmaExac,by=c("eid")),]
+hesDataAsthmaExacPrimSecondary <- hesDataCombined[diag %like% "J45",]
+hesDataAsthmaExac <- hesDataAsthmaExac[!duplicated(hesDataAsthmaExac,by=c("eid")),]
+hesDataAsthmaExacPrimSecondary <- hesDataAsthmaExacPrimSecondary[!duplicated(hesDataAsthmaExacPrimSecondary,by=c("eid")),]
 hesDataCOPDExacPrim<-hesDataCOPDExacPrim[!duplicated(hesDataCOPDExacPrim,by=c("eid")),]
+hesDataCOPDExacPrimSecondary<-hesDataCOPDExacPrimSecondary[!duplicated(hesDataCOPDExacPrimSecondary,by=c("eid")),]
 hesDataCOPDExacPrim[,copd_prim:=1]
+hesDataCOPDExacPrimSecondary[,copd_prim_second:=1]
 hesDataAsthmaExac[,asthma_prim:=1]
+hesDataAsthmaExacPrimSecondary[,asthma_prim_second:=1]
 bd <- merge(bd,hesDataCOPDExacPrim[,c("eid","copd_prim")],by.x="f_eid",by.y="eid",all.x=T)
 bd <- merge(bd,hesDataAsthmaExac[,c("eid","asthma_prim")],by.x="f_eid",by.y="eid",all.x=T)
+bd <- merge(bd,hesDataCOPDExacPrimSecondary[,c("eid","copd_prim_second")],by.x="f_eid",by.y="eid",all.x=T)
+bd <- merge(bd,hesDataAsthmaExacPrimSecondary[,c("eid","asthma_prim_second")],by.x="f_eid",by.y="eid",all.x=T)
 #Set NA to 0 for all subjects
 bd[,copd_prim:=ifelse(is.na(copd_prim),0,copd_prim)]
 bd[,asthma_prim:=ifelse(is.na(asthma_prim),0,asthma_prim)]
 #Create a spirometry based phenotype
-bd[,specialRequest_QUANT_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,0)]
-bd[,specialRequest_QUANT_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,0)]
+bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,0)]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,0)]
 #Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and hes code "J44". Do this for strict and loose defined spirometry(field 20152)
-bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyLoose==0,0,NA))]
-bd[,specialRequest_BIN_copdMappingStrict:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyStrict==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyStrict==0,0,NA))]
+bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0,0,NA))]
 #Exclude Asthma subjects
-bd[,specialRequest_BIN_copdMappingLoose_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
-bd[,specialRequest_BIN_copdMappingStrict_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_QUANT_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse((copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_QUANT_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingLoose_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse((copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+#Include COPD primary and secondary
+bd[,specialRequest_BIN_copdMappingLoose_primAndSec:=ifelse(copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_primAndSec:=ifelse(copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1,1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0,0,NA))]
+#Include COPD primary and secondary, no asthma for each
+bd[,specialRequest_BIN_copdMappingLoose_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
 
 ###########################################################################################################################
 
@@ -2520,7 +2533,7 @@ fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1192")),
 fieldHES="HES_block_p_N17_N19_Renal_failure_BIN"
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 
-#Updated  GWAS by proxy to include HES and self reported
+#Updated  GWAS by proxy
 #AD, Used the Phenotype coding describe by Jimmy Liu in GWAX nature paper
 #F+M
 bd[,f_20107_20110_code1_BIN_Heart_disease:=ifelse(f_20107_0_code1_BIN_Heart_disease==1|f_20110_0_code1_BIN_Heart_disease==1,1,ifelse(f_20107_0_code1_BIN_Heart_disease==0&f_20110_0_code1_BIN_Heart_disease==0,0,NA))]
@@ -2552,39 +2565,14 @@ bd[,"f_6157_0_0_f_BIN_Why_stopped_smoking" := NULL]
 bd[,"f_6158_0_0_f_BIN_Why_reduced_smoking" := NULL]
 bd[,"f_10115_0_0_f_BIN_Why_stopped_smoking_pilot" := NULL]
 
-#Merge in Ioanna's QCd file, performing a left join since I want to keep all phenotype data for now
-#bd <- merge(bd,newPCsChipCovar,by.x="f_eid",by.y="IID",all.x=TRUE)
-
-#Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-{combineTable<-data.frame(matrix(nrow=2,ncol=2))
-   names(combineTable)=c("remove1","remove2")
-   for (i in names(bd)[grep("BIN",names(bd))]) {
-     tryCatch({
-     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-     #print(i)
-  },error=function(e){}) }
-     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-     combineTable <- select(combineTable,contains("BIN"))
-     #print(i)
-     write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.csv")
-   }
-
-#Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
-quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
-names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.csv")
-
 #Create a list of the variables that we want to keep or exclude
-binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
+#binOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.ls",header=F,data.table=F)
 #binOutcome1.case200 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.case200.ls",header=F,data.table=F)
-quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
+#quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
 #Not interested in Brain imaging data right now
 quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
-quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/brain_imaging_variables.txt",header=F,data.table=F)
+#quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/brain_imaging_variables.txt",header=F,data.table=F)
 nonPriorityPhenotypes <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/nonPriorityPhenotypes.txt",header=F)
-
-
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
 bd[,f_eid:=NULL]
@@ -2597,7 +2585,6 @@ bdNames <- as.data.frame(cbind(names(bd),names(bd)))
 #quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
 quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
 #Variable for removing brain imaging from phenotype file
-
 
 #Read in Ioanna's covarFile
 covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/500k_GWASdownload/DataQC/Ioanna/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
@@ -2613,7 +2600,7 @@ for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
   bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
-  set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+  set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
   print(phenoVariable)
 },error=function(e){print(paste0("Error with:",phenoVariable))})}
 
@@ -2629,7 +2616,7 @@ set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualiz
 #Requires age squared varaible
 bd_residualization[,ageSquared_QUANT := age^2]
 phenoVariable="f_3063_0_f_QUANT_FEV1_maximumValue"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2637,7 +2624,7 @@ set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualiz
 #FVC
 #Requires age squared variable
 phenoVariable="f_3062_0_f_QUANT_FVC_maximumValue"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2645,7 +2632,7 @@ set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualiz
 #FEV1/FVC ratio
 #Requires age squared variable
 phenoVariable="specialRequest_QUANT_FEV1_FVC_ratio"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2653,7 +2640,7 @@ set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualiz
 #FEV1/FVC smoked only ratio
 #Requires age squared variable
 phenoVariable="specialRequest_QUANT_FEV1_ever_smoked_only"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+ageSquared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2668,11 +2655,36 @@ set(bd_residualization,i=which(is.infinite(bd[[paste0(phenoVariable,"_residualiz
 
 #Remove the unnecessary columns
 bd_residualization<-bd_residualization[,c("FID","IID",grep("^f_",names(bd_residualization),value=T)),with=FALSE]
+#Remove the binary smoke variable that got residualized as aprt of residualization loop
+bd_residualization[,f_20160_0_0_f_BIN_Ever_smoked_residualizedRelated:=NULL]
 #Merge in the residualized variables
 bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",names(bd_residualization),value=T)),with=FALSE],by=c("FID","IID"),all.x=T)
 #Remove HES cancer codes from phenotype file
 hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
 hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
+
+#Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
+write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
+bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
+
+#Write All to one file
+connectionAll <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.txt", open="wt") 
+writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/12/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
+write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+close(connectionAll)
+write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
+
+#Write Binary File
+connectionBin <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.txt", open="wt") 
+writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/12/2017"),connectionBin)
+write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+close(connectionBin) 
+
+#Write Quantitative File with Brain imaging with comments for first line
+connectionQuant <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.txt", open="wt")
+writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/12/2017;Does not contain brain imaging"),connectionQuant)
+write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+close(connectionQuant)
 
 #Summarize variables
 #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
@@ -2695,31 +2707,10 @@ quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
 write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.csv")
 
-#Remove non essential variables from full phentoype matrix before outputting to file
-bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
-
-#Write All to one file
-connectionAll <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.txt", open="wt") 
-writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/12/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
-write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
-close(connectionAll)
-write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
-
-#Write Binary File
-connectionBin <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.txt", open="wt") 
-writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/12/2017"),connectionBin)
-write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
-close(connectionBin) 
-
-#Write Quantitative File with Brain imaging with comments for first line
-connectionQuant <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.txt", open="wt")
-writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/12/2017;Does not contain brain imaging"),connectionQuant)
-write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)]),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
-close(connectionQuant)
-
-
 print("time to write files:Stop")
 print(proc.time())
+
+
 
 #plotting variables
 #just40008[,c(1:12)] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave("test2.pdf",,width=10,height=20,paper='special')
