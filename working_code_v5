@@ -2472,12 +2472,13 @@ c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test
 hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
 hesDataCOPDExacPrim <- hesDataPrim[diag %like% "J44",]
 hesDataCOPDExacPrimSecondary <- hesDataCombined[diag %like% "J44",]
+hesDataCOPDExacPrim<-hesDataCOPDExacPrim[!duplicated(hesDataCOPDExacPrim,by=c("eid")),]
+hesDataCOPDExacPrimSecondary<-hesDataCOPDExacPrimSecondary[!duplicated(hesDataCOPDExacPrimSecondary,by=c("eid")),]
 hesDataAsthmaExac <- hesDataPrim[diag %like% "J45",]
 hesDataAsthmaExacPrimSecondary <- hesDataCombined[diag %like% "J45",]
 hesDataAsthmaExac <- hesDataAsthmaExac[!duplicated(hesDataAsthmaExac,by=c("eid")),]
 hesDataAsthmaExacPrimSecondary <- hesDataAsthmaExacPrimSecondary[!duplicated(hesDataAsthmaExacPrimSecondary,by=c("eid")),]
-hesDataCOPDExacPrim<-hesDataCOPDExacPrim[!duplicated(hesDataCOPDExacPrim,by=c("eid")),]
-hesDataCOPDExacPrimSecondary<-hesDataCOPDExacPrimSecondary[!duplicated(hesDataCOPDExacPrimSecondary,by=c("eid")),]
+
 hesDataCOPDExacPrim[,copd_prim:=1]
 hesDataCOPDExacPrimSecondary[,copd_prim_second:=1]
 hesDataAsthmaExac[,asthma_prim:=1]
@@ -2489,6 +2490,8 @@ bd <- merge(bd,hesDataAsthmaExacPrimSecondary[,c("eid","asthma_prim_second")],by
 #Set NA to 0 for all subjects
 bd[,copd_prim:=ifelse(is.na(copd_prim),0,copd_prim)]
 bd[,asthma_prim:=ifelse(is.na(asthma_prim),0,asthma_prim)]
+bd[,copd_prim_second:=ifelse(is.na(copd_prim_second),0,copd_prim_second)]
+bd[,asthma_prim_second:=ifelse(is.na(asthma_prim_second),0,asthma_prim_second)]
 #Create a spirometry based phenotype
 bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,0)]
 bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,0)]
@@ -2616,9 +2619,9 @@ bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd
 set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
 #FEV1
 #Requires age squared varaible
-bd_residualization[,ageSquared_QUANT := age^2]
+bd_residualization[,specialRequest_ageSquared_QUANT_age_squared := age^2]
 phenoVariable="f_3063_0_f_QUANT_FEV1_maximumValue"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2626,7 +2629,7 @@ set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVaria
 #FVC
 #Requires age squared variable
 phenoVariable="f_3062_0_f_QUANT_FVC_maximumValue"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2634,7 +2637,7 @@ set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVaria
 #FEV1/FVC ratio
 #Requires age squared variable
 phenoVariable="specialRequest_QUANT_FEV1_FVC_ratio"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
@@ -2642,7 +2645,7 @@ set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVaria
 #FEV1/FVC smoked only ratio
 #Requires age squared variable
 phenoVariable="specialRequest_QUANT_FEV1_ever_smoked_only"
-residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+ageSquared_QUANT+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
