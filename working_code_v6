@@ -2573,6 +2573,16 @@ bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==
 bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
   ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
+#OA under 50
+#get all the diganoses for OA
+hesDataPrimSecMerged <- merge(hesDataPrim,hesDataSec,by="record_id",all.x=T)[,.(record_id,eid.x,admidate,diag.x,disdate,diag.y)]
+hesDataPrimSecMerged_OA<-hesDataPrimSecMerged[diag.x %like% "M15"|diag.x %like% "M16"|diag.x %like% "M17"|diag.x %like% "M18"|diag.x %like% "M19"|diag.y %like% "M15"|diag.y %like% "M16"|diag.y %like% "M17"|diag.y %like% "M18"|diag.y %like% "M19"]
+#Take earliest admission date per subject
+hesDataPrimSecMerged_OA <- hesDataPrimSecMerged_OA[order(eid.x,admidate)][!duplicated(eid.x)]
+hesDataPrimSecMerged_OA[,diagYear := as.numeric(format(as.Date(admidate),'%Y'))]
+#f_34_0_0_f_QUANT_Year_of_birth
+
+
 #renal kidney failure updated with block coding
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
 fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1192")),value=TRUE)
@@ -2673,7 +2683,7 @@ bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resi
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
 set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
 #FEV1
-#Requires age squared varaible
+#Requires age squared variable
 bd_residualization[,specialRequest_ageSquared_QUANT_age_squared := age^2]
 phenoVariable="f_3063_0_f_QUANT_FEV1_maximumValue"
 residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
@@ -2689,6 +2699,15 @@ bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
 bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
 set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+#FVC with ERS ATS filter
+#Requires age squared variable
+phenoVariable="f_3062_0_f_QUANT_FVC_maximumValue_strict"
+residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=as.double(resid(residModel))]
+bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=qnorm((rank(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]],na.last="keep")/sum(!is.na(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]]))))]
+set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
+
 #FEV1/FVC ratio
 #Requires age squared variable
 phenoVariable="specialRequest_QUANT_FEV1_FVC_ratio"
@@ -2725,6 +2744,33 @@ bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",nam
 #Remove HES cancer codes from phenotype file
 #hesCancerRemove <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/removeHES_cancers.ls",header=F)
 #hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
+
+#Generate ARDB2 phenotype
+hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+names(hesDataPrim)[5]="diag"
+#f_34_0_0_f_QUANT_Year_of_birth
+hesDataPrimARBD2 <- hesDataPrim[diag %like% "J45",.(eid,admidate,diag,disdate,epidur,epistart,epiend)]
+hesDataPrimARBD2[,diag3char:="J45"]
+#Generate set variable representing ED or hospitalization visit using admission information
+hesDataPrimARBD2[,hospLength := as.Date(hesDataPrimARBD2[["disdate"]])-as.Date(hesDataPrimARBD2[["admidate"]])]
+#Phenotype A. hospitalizing exacerbations
+hesDataPrimARBD2[,specialRequest_BIN_hospitalizingExacerbation:=ifelse(hospLength>=1,1,0)]
+#Reduce to episodes lasting more than a day
+hesDataPrimARBD2 <- hesDataPrimARBD2[epidur>=1,]
+#Reduce to subjects with unique admission date
+hesDataPrimARBD2noDupes <- hesDataPrimARBD2[!duplicated(hesDataPrimARBD2,by=c("eid","admidate")),]
+#With unique episodes, create the counts
+#Default behavior to return counts of code per subject
+hesDataPrimARBD2noDupesWide <-dcast(hesDataPrimARBD2noDupes, eid ~ diag3char, value.var = c("diag3char"))
+#Create length of total hospital range using first diagnosis of any disease and last diagnosis of any disease
+subjectLastAdmin <- hesDataPrim[order(eid,-disdate)][!duplicated(eid)][,.(eid,disdate)]
+subjectFirstAdmin <- hesDataPrim[order(eid,admidate)][!duplicated(eid)][,.(eid,admidate)]
+subjectFirstAndLast <- merge(subjectFirstAdmin,subjectLastAdmin)
+#Create total number of years observed
+subjectFirstAndLast[,yearsObs:= (as.Date(disdate)- as.Date(admidate))/365]
+#If years observed is 0 then divide 1 day by 365
+subjectFirstAndLast[,yearsObs:= ifelse(yearsObs==0.000000000,1/365,yearsObs)]
+subjectFirstAndLastWithAsthma <- merge(hesDataPrimARBD2noDupesWide,subjectFirstAndLast)
 
 #Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
