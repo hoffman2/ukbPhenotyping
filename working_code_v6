@@ -2573,15 +2573,6 @@ bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==
 bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
   ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
-#OA under 50
-#get all the diganoses for OA
-hesDataPrimSecMerged <- merge(hesDataPrim,hesDataSec,by="record_id",all.x=T)[,.(record_id,eid.x,admidate,diag.x,disdate,diag.y)]
-hesDataPrimSecMerged_OA<-hesDataPrimSecMerged[diag.x %like% "M15"|diag.x %like% "M16"|diag.x %like% "M17"|diag.x %like% "M18"|diag.x %like% "M19"|diag.y %like% "M15"|diag.y %like% "M16"|diag.y %like% "M17"|diag.y %like% "M18"|diag.y %like% "M19"]
-#Take earliest admission date per subject
-hesDataPrimSecMerged_OA <- hesDataPrimSecMerged_OA[order(eid.x,admidate)][!duplicated(eid.x)]
-hesDataPrimSecMerged_OA[,diagYear := as.numeric(format(as.Date(admidate),'%Y'))]
-#f_34_0_0_f_QUANT_Year_of_birth
-
 
 #renal kidney failure updated with block coding
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
@@ -2746,31 +2737,82 @@ bd <- merge(bd,bd_residualization[,c("FID","IID",grep("_residualizedRelated",nam
 #hesCancerRemove <- hesCancerRemove[,! V1 %in% bdNames]
 
 #Generate ARDB2 phenotype
+#For phenotypes B and C, only focus on hospitalizing asthma
+#Episode; A continuous period of admitted patient care administered under one consultant within one healthcare provider. If a patient is transferred to another consultant or to a different healthcare provider during a spell of treatment, a new record is generated, i.e. a new episode.
 hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
 names(hesDataPrim)[5]="diag"
 #f_34_0_0_f_QUANT_Year_of_birth
 hesDataPrimARBD2 <- hesDataPrim[diag %like% "J45",.(eid,admidate,diag,disdate,epidur,epistart,epiend)]
 hesDataPrimARBD2[,diag3char:="J45"]
 #Generate set variable representing ED or hospitalization visit using admission information
-hesDataPrimARBD2[,hospLength := as.Date(hesDataPrimARBD2[["disdate"]])-as.Date(hesDataPrimARBD2[["admidate"]])]
 #Phenotype A. hospitalizing exacerbations
-hesDataPrimARBD2[,specialRequest_BIN_hospitalizingExacerbation:=ifelse(hospLength>=1,1,0)]
-#Reduce to episodes lasting more than a day
-hesDataPrimARBD2 <- hesDataPrimARBD2[epidur>=1,]
-#Reduce to subjects with unique admission date
-hesDataPrimARBD2noDupes <- hesDataPrimARBD2[!duplicated(hesDataPrimARBD2,by=c("eid","admidate")),]
+hesDataPrimARBD2[,specialRequest_QUANT_type_of_asthma_exacerbation:=ifelse(epidur>=1,2,1)]
+hesDataPrimARBD2 <- hesDataPrimARBD2[order(eid,-epidur)]
+hesDataPrimARBD2noDupes <- hesDataPrimARBD2[!duplicated(hesDataPrimARBD2,by=c("eid")),]
+#Reduce to episodes lasting more than a day to specify hospitalizing exacerbations(To be used for phenotype B)
+hesDataPrimARBD2_hospital <- hesDataPrimARBD2[epidur>=1,]
+#Reduce to subjects with unique episode start date to identify unique exacerbation; based on conversations with Mathias
+#We want to prioritze hospitalizing visits; sort by longest duration
+hesDataPrimARBD2_hospital <- hesDataPrimARBD2_hospital[order(eid,-epidur)]
+hesDataPrimARBD2noDupes_hospital <- hesDataPrimARBD2_hospital[!duplicated(hesDataPrimARBD2_hospital,by=c("eid","epistart")),]
 #With unique episodes, create the counts
 #Default behavior to return counts of code per subject
-hesDataPrimARBD2noDupesWide <-dcast(hesDataPrimARBD2noDupes, eid ~ diag3char, value.var = c("diag3char"))
+hesDataPrimARBD2noDupesWide <-dcast(hesDataPrimARBD2noDupes_hospital, eid ~ diag3char, value.var = c("diag3char"))
 #Create length of total hospital range using first diagnosis of any disease and last diagnosis of any disease
-subjectLastAdmin <- hesDataPrim[order(eid,-disdate)][!duplicated(eid)][,.(eid,disdate)]
-subjectFirstAdmin <- hesDataPrim[order(eid,admidate)][!duplicated(eid)][,.(eid,admidate)]
+#Change this to using J45 to set observation
+subjectLastAdmin <- hesDataPrim[order(eid,-epiend)][!duplicated(eid)][,.(eid,epiend)]
+subjectFirstAdmin <- hesDataPrim[order(eid,epistart)][!duplicated(eid)][,.(eid,epistart)]
 subjectFirstAndLast <- merge(subjectFirstAdmin,subjectLastAdmin)
 #Create total number of years observed
-subjectFirstAndLast[,yearsObs:= (as.Date(disdate)- as.Date(admidate))/365]
+subjectFirstAndLast[,specialRequest_QUANT_years_observed_in_primary_HES:= (as.Date(epiend)- as.Date(epistart))/365]
 #If years observed is 0 then divide 1 day by 365
-subjectFirstAndLast[,yearsObs:= ifelse(yearsObs==0.000000000,1/365,yearsObs)]
-subjectFirstAndLastWithAsthma <- merge(hesDataPrimARBD2noDupesWide,subjectFirstAndLast)
+subjectFirstAndLast[,specialRequest_QUANT_years_observed_in_primary_HES:= ifelse(specialRequest_QUANT_years_observed_in_primary_HES==0.000000000,1/365,specialRequest_QUANT_years_observed_in_primary_HES)]
+#merge in years observed to full phenotype file
+bd <- merge(bd,subjectFirstAndLast[,.(eid,specialRequest_QUANT_years_observed_in_primary_HES)],by.x="IID",by.y="eid",all.x=T)
+#For subjects that have only 1 visit in HES primary than set observed time to 1/365
+bd[is.na(specialRequest_QUANT_years_observed_in_primary_HES),specialRequest_QUANT_years_observed_in_primary_HES:=1/365]
+#For flexibility, a raw counts variable and annual rate variable will be created
+hesDataPrimARBD2noDupesWide[,specialRequest_QUANT_asthma_hospital_exacerbations_raw:=J45]
+#Merge in phenotype A into full matrix
+bd <- merge(bd,hesDataPrimARBD2noDupes[,.(eid,specialRequest_QUANT_type_of_asthma_exacerbation)],by.x="IID",by.y="eid",all.x=T)
+#Using predefined definition finish coding phenotype A
+bd[,specialRequest_QUANT_type_of_asthma_exacerbation:=ifelse(is.na(specialRequest_QUANT_type_of_asthma_exacerbation)&map2way_NI_code1111_BIN_asthma==1,0,specialRequest_QUANT_type_of_asthma_exacerbation)]
+#merge in raw hospitalizing counts and then set asthma cases without hospitalizing exacerbations to 0
+bd <- merge(bd,hesDataPrimARBD2noDupesWide[,.(eid,specialRequest_QUANT_asthma_hospital_exacerbations_raw)],by.x="IID",by.y="eid",all.x=T)
+bd[,specialRequest_QUANT_asthma_hospital_exacerbations_raw:=ifelse(is.na(specialRequest_QUANT_asthma_hospital_exacerbations_raw)&map2way_NI_code1111_BIN_asthma==1,0,specialRequest_QUANT_asthma_hospital_exacerbations_raw)]
+#Create annual rate of asthma exacerbation
+bd[!is.na(specialRequest_QUANT_asthma_hospital_exacerbations_raw)&!is.na(specialRequest_QUANT_years_observed_in_primary_HES),specialRequest_QUANT_asthma_hospital_exacerbations_annual_rate:=specialRequest_QUANT_asthma_hospital_exacerbations_raw/specialRequest_QUANT_years_observed_in_primary_HES]
+#Age of onset
+#Take earliest admission date per subject
+hesDataPrimARBD2 <- hesDataPrimARBD2[order(eid,epistart)]
+hesDataPrimARBD2noDupes_AOE <- hesDataPrimARBD2[!duplicated(hesDataPrimARBD2,by=c("eid")),]
+hesDataPrimARBD2noDupes_AOE[,diagYear := as.numeric(format(as.Date(epistart),'%Y'))]
+#Calculate HES based age of onset
+hesDataPrimARBD2noDupes_AOE <- merge(bd[,.(IID,f_34_0_0_f_QUANT_Year_of_birth)],hesDataPrimARBD2noDupes_AOE,by.x="IID",by.y="eid")
+hesDataPrimARBD2noDupes_AOE[,specialRequest_QUANT_asthma_HES_based_age_of_onset:=diagYear-f_34_0_0_f_QUANT_Year_of_birth]
+#Merge in HES age for OA subjects
+bd <- merge(bd,hesDataPrimARBD2noDupes_AOE[,.(IID,specialRequest_QUANT_asthma_HES_based_age_of_onset)],by="IID",all.x=T)
+bd[,specialRequest_QUANT_asthma_HES_or_NI_based_age_of_onset_youngest:= apply(bd[,.(specialRequest_QUANT_asthma_HES_based_age_of_onset,f_20009_0_dxAgeCode1111_QUANT_asthma,f_22147_0_0_f_QUANT_Age_asthma_diagnosed_by_doctor,f_3786_0_0_f_QUANT_Age_asthma_diagnosed)],1,min,na.rm=T)]
+set(bd,i=which(is.infinite(bd[["specialRequest_QUANT_asthma_HES_or_NI_based_age_of_onset_youngest"]])),j="specialRequest_QUANT_asthma_HES_or_NI_based_age_of_onset_youngest",value=NA)
+
+#OA under 50
+#get all the diganoses for OA
+hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
+hesDataSec <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/HESIN_SECONDARY_DIAG10_26041_all.minus508567.tsv",header=T,sep="\t",na.strings="")
+names(hesDataPrim)[5]="diag"
+names(hesDataSec)[4]="diag"
+hesDataPrimSecMerged <- merge(hesDataPrim,hesDataSec,by="record_id",all.x=T)[,.(record_id,eid.x,epistart,diag.x,disdate,diag.y)]
+hesDataPrimSecMerged_OA<-hesDataPrimSecMerged[diag.x %like% "M15"|diag.x %like% "M16"|diag.x %like% "M17"|diag.x %like% "M18"|diag.x %like% "M19"|diag.y %like% "M15"|diag.y %like% "M16"|diag.y %like% "M17"|diag.y %like% "M18"|diag.y %like% "M19"]
+#Take earliest admission date per subject
+hesDataPrimSecMerged_OA <- hesDataPrimSecMerged_OA[order(eid.x,epistart)][!duplicated(eid.x)]
+hesDataPrimSecMerged_OA[,diagYear := as.numeric(format(as.Date(epistart),'%Y'))]
+#Calculate HES based age of onset
+hesDataPrimSecMerged_OA <- merge(bd[,.(IID,f_34_0_0_f_QUANT_Year_of_birth)],hesDataPrimSecMerged_OA,by.x="IID",by.y="eid.x")
+hesDataPrimSecMerged_OA[,specialRequest_QUANT_OA_HES_based_age_of_onset:=diagYear-f_34_0_0_f_QUANT_Year_of_birth]
+#Merge in HES age for OA subjects
+bd <- merge(bd,hesDataPrimSecMerged_OA[,.(IID,specialRequest_QUANT_OA_HES_based_age_of_onset)],by="IID",all.x=T)
+#Set OA cases with age of onset >=50 to NA
+bd[,specialRequest_BIN_OA_under_age_50 := ifelse(is.na(specialRequest_QUANT_OA_HES_based_age_of_onset)&is.na(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis)&map2way_NI_code1465_BIN_osteoarthritis==0,0,ifelse(specialRequest_QUANT_OA_HES_based_age_of_onset<=50|f_20009_0_dxAgeCode1465_QUANT_osteoarthritis<=50,1,ifelse(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis>=50&specialRequest_QUANT_OA_HES_based_age_of_onset>=50,NA,NA)))]
 
 #Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
