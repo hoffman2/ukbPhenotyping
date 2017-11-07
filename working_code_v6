@@ -2573,7 +2573,6 @@ bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==
 bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
   ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
-
 #renal kidney failure updated with block coding
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
 fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1192")),value=TRUE)
@@ -2814,24 +2813,31 @@ bd <- merge(bd,hesDataPrimSecMerged_OA[,.(IID,specialRequest_QUANT_OA_HES_based_
 #Set OA cases with age of onset >=50 to NA
 bd[,specialRequest_BIN_OA_under_age_50 := ifelse(is.na(specialRequest_QUANT_OA_HES_based_age_of_onset)&is.na(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis)&map2way_NI_code1465_BIN_osteoarthritis==0,0,ifelse(specialRequest_QUANT_OA_HES_based_age_of_onset<=50|f_20009_0_dxAgeCode1465_QUANT_osteoarthritis<=50,1,ifelse(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis>=50&specialRequest_QUANT_OA_HES_based_age_of_onset>=50,NA,NA)))]
 
+#OA non-load bearing joints
+hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
+hesDataOA <- hesDataCombined[diag %like% "M18"|diag %in% "M1901"|diag %in% "M1902"|diag %in% "M1903"|diag %in% "M1904"|diag %in% "M1990"|diag %in% "M1991"|diag %in% "M1992"|diag %in% "M1993"|diag %in% "M1994",]
+hesDataOA <- hesDataOA[!duplicated(hesDataOA,by=c("eid")),]
+bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(IID %in% hesDataOA[["eid"]],1,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA))]
+
+
 #Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
 write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
 bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 
 #Write All to one file
-connectionAll <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.tmp.txt", open="wt") 
+connectionAll <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.backup.txt", open="wt") 
 #writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
-write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 
 #Write Binary File
-connectionBin <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tmp.txt", open="wt") 
+connectionBin <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.backup.txt", open="wt") 
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
 write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
-connectionQuant <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tmp.txt", open="wt")
+connectionQuant <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.backup.txt", open="wt")
 #writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Does not contain brain imaging"),connectionQuant)
 write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
