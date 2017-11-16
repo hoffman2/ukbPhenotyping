@@ -2461,7 +2461,7 @@ bd[,f_3064_0_f_QUANT_PEF_maximumValue_strict := ifelse(f_20152_0_0_f_BIN_Reprodu
 bd$specialRequest_QUANT_hear_loss_B <- apply(select(bd,c(starts_with("f_20021_"),starts_with("f_20019_0_0"))),1,max,na.rm=T)
 set(bd,i=which(is.infinite(bd[["specialRequest_QUANT_hear_loss_B"]])),j="specialRequest_QUANT_hear_loss_B",value=NA)
 # Joint pain
-bd[,specialRequest_BIN_joint_pain := ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==1|bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==1,1,ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==0 & bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==0,0,NA))]
+bd[,specialRequest_BIN_joint_pain := ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==1|bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==1|bd[["f_3773_0_0_f_BIN_Knee_pain_for_3_months"]]==1,1,ifelse(bd[["f_3414_0_0_f_BIN_Hip_pain_for_3_months"]]==0 & bd[["f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months"]]==0&bd[["f_3773_0_0_f_BIN_Knee_pain_for_3_months"]]==0,0,NA))]
 #FEV1 in never smokers, remove everyone else
 bd[,specialRequest_QUANT_FEV1_never_smoked_only := ifelse(f_20160_0_0_f_BIN_Ever_smoked==1|is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,f_3063_0_f_QUANT_FEV1_maximumValue)]
 bd[,specialRequest_QUANT_FEV1_never_smoked_only_strict:= ifelse(f_20152_0_0_f_BIN_Reproduciblity_of_spirometry_measurement_using_ERS_ATS_criteria==1,specialRequest_QUANT_FEV1_never_smoked_only,NA)]
@@ -2499,11 +2499,11 @@ bd[, specialRequest_QUANT_FEV1_pred := NA]
 bd[, specialRequest_QUANT_FEV1_pred := as.double(specialRequest_QUANT_FEV1_pred)]
 #Using the coefficients from the linear model, predict FEV1 in the entire cohort.
 bd[,specialRequest_QUANT_FEV1_pred := predict(fev1.pred,bd)]
-#Set subjects with a non-reproducible 20152 score to NA 
+#Set subjects with a non-reproducible 20152 score to NA (The 3063 variable mentioned below incorporates the 20152 flag)
 bd[,specialRequest_QUANT_FEV1_pred_strict := ifelse(is.na(f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred),NA,specialRequest_QUANT_FEV1_pred)]
 #Calculate FEV1 predicted percentage
 bd[,specialRequest_QUANT_FEV1_percent_pred:= (f_3063_0_f_QUANT_FEV1_maximumValue/specialRequest_QUANT_FEV1_pred)*100]
-#Strict FEV1 predicted percentage based on 20152
+#Strict FEV1 predicted percentage based on 20152:(The 3063 variable mentioned below incorporates the 20152 flag)
 bd[,specialRequest_QUANT_FEV1_percent_pred_strict:= ifelse(is.na(f_3063_0_f_QUANT_FEV1_maximumValue_forFEV1_Pred),NA,specialRequest_QUANT_FEV1_percent_pred)]
 #Print Correlation between Tobin FEV predicted and new FEV1 predicted values
 c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test(bd$specialRequest_QUANT_FEV1_pred,bd$f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted)$estimate))[2]
@@ -2550,6 +2550,51 @@ bd[,specialRequest_BIN_copdMappingStrict_primAndSec:=ifelse(copd_prim_second==1|
 #Include COPD primary and secondary, no asthma for each
 bd[,specialRequest_BIN_copdMappingLoose_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
+#Create exacerbation variable using definition by Hana
+hesDataCOPDExacPrimHannaDefinition <- hesDataPrim[diag %like% "J440"|diag %like% "J441"|diag %like% "J449",]
+hesDataCOPDExacSecHannaDefinition <- hesDataSec[diag %like% "J440"|diag %like% "J441",]
+hesDataCOPDExacPrimarySecondaryHannaDefinition <- rbind(hesDataCOPDExacPrimHannaDefinition[,c(1,5)],hesDataCOPDExacSecHannaDefinition[,c(1,4)])
+hesDataCOPDExacPrimarySecondaryHannaDefinition<-hesDataCOPDExacPrimarySecondaryHannaDefinition[!duplicated(hesDataCOPDExacPrimarySecondaryHannaDefinition,by=c("eid")),]
+hesDataCOPDExacPrimarySecondaryHannaDefinition[,specialRequest_BIN_copdExacerbation_hanna_definition:=1]
+bd <- merge(bd,hesDataCOPDExacPrimarySecondaryHannaDefinition[,c("eid","specialRequest_BIN_copdExacerbation_hanna_definition")],by.x="f_eid",by.y="eid",all.x=T)
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition:=ifelse(is.na(specialRequest_BIN_copdExacerbation_hanna_definition),0,specialRequest_BIN_copdExacerbation_hanna_definition)]
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly:=ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,ifelse(f_20160_0_0_f_BIN_Ever_smoked==1,specialRequest_BIN_copdExacerbation_hanna_definition,NA))]
+#GOLD STAGES based on martin tobin (main difference is the use of smokers with at least 0.42 for proportion of pack years in life)
+bd[,specialRequest_QUANT_GOLD_tobin := ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=80,1,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<=79 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=50,2,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<=49 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=30,3,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<30,4,NA))))]
+#GOLD STAGES without factoring pack years
+bd[,specialRequest_QUANT_GOLD := ifelse(specialRequest_QUANT_FEV1_percent_pred_strict>=80,1,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<=79 & specialRequest_QUANT_FEV1_percent_pred_strict>=50,2,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<=49 & specialRequest_QUANT_FEV1_percent_pred_strict>=30,3,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<30,4,NA))))]
+#COPD phenotype
+#Need to get diagnosis dates for secondaries using primary data
+copdPrimForExac <- hesDataPrim[diag %like% "J440"|diag %like% "J441"|diag %like% "J449",.(eid,admidate,diag,disdate,epidur,epistart,epiend,record_id)]
+copdSecForExac <- hesDataSec[diag %like% "J440"|diag %like% "J441",]
+copdSecondWithEpiData <- merge(copdSecForExac,hesDataPrim[,.(eid,record_id,admidate,disdate,epidur,epistart,epiend)],by=c("record_id","eid"))[!duplicated(record_id)]
+copdSecondWithEpiData <- copdSecondWithEpiData[,.(eid,admidate,diag,disdate,epidur,epistart,epiend,record_id)]
+#Merge primary and secondary and remove dupicate record IDs
+copdPrimarySecondWithEpiData <- as.data.table(rbind(copdPrimForExac,copdSecondWithEpiData))[!duplicated(record_id)]
+copdPrimarySecondWithEpiData[,diag3char:="J44"]
+#Determine if an ED or admitting episode
+copdPrimarySecondWithEpiData[,specialRequest_CAT_type_of_COPD_exacerbation:=ifelse(epidur>=1,2,1)]
+#Reduce to episodes lasting more than a day to specify hospitalizing exacerbations(To be used for phenotype B)
+copdPrimarySecondWithEpiData_hospital <- copdPrimarySecondWithEpiData[epidur>=1,]
+#Phenotype A. hospitalizing exacerbations
+#Reduce to subjects with unique episode start date to identify unique exacerbation; based on conversations with Mathias
+#We want to prioritze hospitalizing visits; sort by longest duration
+copdPrimarySecondWithEpiData_hospital <- copdPrimarySecondWithEpiData_hospital[order(eid,-epidur)]
+copdPrimarySecondWithEpiData_hospital <- copdPrimarySecondWithEpiData_hospital[!duplicated(copdPrimarySecondWithEpiData_hospital,by=c("eid","epistart")),]
+#With unique episodes, create the counts
+#Default behavior to return counts of code per subject
+copdPrimarySecondWithEpiData_hospital_Wide <-dcast(copdPrimarySecondWithEpiData_hospital, eid ~ diag3char, value.var = c("diag3char"))
+names(copdPrimarySecondWithEpiData_hospital_Wide)=c("IID","specialRequest_QUANT_number_of_hospitalizing_exacerbation")
+#Merge to full data table
+bd <- merge(bd,copdPrimarySecondWithEpiData_hospital_Wide,all.x=TRUE)
+#Subjects with NA are set to zero
+bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
+#Case only Tobin
+bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation_caseOnly_tobin := ifelse(specialRequest_QUANT_number_of_hospitalizing_exacerbation==0&as.numeric(specialRequest_QUANT_GOLD_tobin)==1,NA,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
+#Case only internally derived
+bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation_caseOnly := ifelse(specialRequest_QUANT_number_of_hospitalizing_exacerbation==0&as.numeric(specialRequest_QUANT_GOLD)==1,NA,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
+
+
 
 ###########################################################################################################################
 
@@ -2819,25 +2864,38 @@ hesDataOA <- hesDataCombined[diag %like% "M18"|diag %in% "M1901"|diag %in% "M190
 hesDataOA <- hesDataOA[!duplicated(hesDataOA,by=c("eid")),]
 bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(IID %in% hesDataOA[["eid"]],1,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA))]
 
+#Pain extremes
+bd[,specialRequest_any_pain_6159:=ifelse(f_6159_code1_BIN_Headache==0 & f_6159_code2_BIN_Facial_pain==0 & f_6159_code3_BIN_Neck_or_shoulder_pain==0 & f_6159_code4_BIN_Back_pain==0 & f_6159_code5_BIN_Stomach_or_abdominal_pain==0 & f_6159_code6_BIN_Hip_pain==0 & f_6159_code7_BIN_Knee_pain==0 & f_6159_code8_BIN_Pain_all_over_the_body==0,0,ifelse(f_6159_code1_BIN_Headache==1 | f_6159_code2_BIN_Facial_pain==1 | f_6159_code3_BIN_Neck_or_shoulder_pain==1 | f_6159_code4_BIN_Back_pain==1 | f_6159_code5_BIN_Stomach_or_abdominal_pain==1 | f_6159_code6_BIN_Hip_pain ==1 | f_6159_code7_BIN_Knee_pain==1 | f_6159_code8_BIN_Pain_all_over_the_body==1,1,NA))]
+bd[,f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_2956_0_0_f_BIN_General_pain_for_3_months==1,1,NA))]
+bd[,f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months==1,1,NA))]
+bd[,f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months==1,1,NA))]
+bd[,f_3571_0_0_f_BIN_Back_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3571_0_0_f_BIN_Back_pain_for_3_months==1,1,NA))]
+bd[,f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months==1,1,NA))]
+bd[,f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3773_0_0_f_BIN_Knee_pain_for_3_months==1,1,NA))]
+bd[,f_3799_0_0_f_BIN_Headaches_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3799_0_0_f_BIN_Headaches_for_3_months==1,1,NA))]
+bd[,f_4067_0_0_f_BIN_Facial_pains_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_4067_0_0_f_BIN_Facial_pains_for_3_months==1,1,NA))]
+bd[,specialRequest_BIN_joint_pain_versus_no_pain := ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1|f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1|f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1,1,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0 & f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0,0,NA))]
 
+#Create time stamp to append to phenotype file
+myTimeStamp=gsub(pattern="-","",as.character(myDate))
 #Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
-write.table(names(bd),file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.csv",sep=",",quote=F)
+write.table(names(bd),file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.",myTimeStamp,".csv"),sep=",",quote=F)
 bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 
 #Write All to one file
-connectionAll <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.backup.txt", open="wt") 
+connectionAll <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.",myTimeStamp,".txt"), open="wt") 
 #writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
 write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 
 #Write Binary File
-connectionBin <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.backup.txt", open="wt") 
+connectionBin <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
 write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
-connectionQuant <- file("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.backup.txt", open="wt")
+connectionQuant <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Does not contain brain imaging"),connectionQuant)
 write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
@@ -2855,14 +2913,13 @@ close(connectionQuant)
      combineTable <- combineTable[,!duplicated(colnames(combineTable))]
      combineTable <- select(combineTable,contains("BIN"))
      #print(i)
-     write.csv(t(combineTable),quote=F,file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.csv")
+     write.csv(t(combineTable),quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.",myTimeStamp,".csv"))
    }
 
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.csv")
-
+write.csv(quantVariables,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.",myTimeStamp,".csv")
 print("time to write files:Stop")
 print(proc.time())
 
