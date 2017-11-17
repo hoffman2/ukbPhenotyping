@@ -2860,13 +2860,13 @@ hesDataPrimSecMerged_OA[,specialRequest_QUANT_OA_HES_based_age_of_onset:=diagYea
 bd <- merge(bd,hesDataPrimSecMerged_OA[,.(IID,specialRequest_QUANT_OA_HES_based_age_of_onset)],by="IID",all.x=T)
 #Set OA cases with age of onset >=50 to NA
 bd[,specialRequest_BIN_OA_under_age_50 := ifelse(is.na(specialRequest_QUANT_OA_HES_based_age_of_onset)&is.na(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis)&map2way_NI_code1465_BIN_osteoarthritis==0,0,ifelse(specialRequest_QUANT_OA_HES_based_age_of_onset<=50|f_20009_0_dxAgeCode1465_QUANT_osteoarthritis<=50,1,ifelse(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis>=50&specialRequest_QUANT_OA_HES_based_age_of_onset>=50,NA,NA)))]
-
+bd[,specialRequest_BIN_OA_under_age_50 := ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_OA_under_age_50)]
 #OA non-load bearing joints
 hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
 hesDataOA <- hesDataCombined[diag %like% "M18"|diag %in% "M1901"|diag %in% "M1902"|diag %in% "M1903"|diag %in% "M1904"|diag %in% "M1990"|diag %in% "M1991"|diag %in% "M1992"|diag %in% "M1993"|diag %in% "M1994",]
 hesDataOA <- hesDataOA[!duplicated(hesDataOA,by=c("eid")),]
 bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(IID %in% hesDataOA[["eid"]],1,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA))]
-
+bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_osteoarthritis_non_load_bearing_joints)]
 #Pain extremes
 bd[,specialRequest_any_pain_6159:=ifelse(f_6159_code1_BIN_Headache==0 & f_6159_code2_BIN_Facial_pain==0 & f_6159_code3_BIN_Neck_or_shoulder_pain==0 & f_6159_code4_BIN_Back_pain==0 & f_6159_code5_BIN_Stomach_or_abdominal_pain==0 & f_6159_code6_BIN_Hip_pain==0 & f_6159_code7_BIN_Knee_pain==0 & f_6159_code8_BIN_Pain_all_over_the_body==0,0,ifelse(f_6159_code1_BIN_Headache==1 | f_6159_code2_BIN_Facial_pain==1 | f_6159_code3_BIN_Neck_or_shoulder_pain==1 | f_6159_code4_BIN_Back_pain==1 | f_6159_code5_BIN_Stomach_or_abdominal_pain==1 | f_6159_code6_BIN_Hip_pain ==1 | f_6159_code7_BIN_Knee_pain==1 | f_6159_code8_BIN_Pain_all_over_the_body==1,1,NA))]
 bd[,f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_2956_0_0_f_BIN_General_pain_for_3_months==1,1,NA))]
@@ -2922,7 +2922,7 @@ close(connectionQuant)
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
 names(quantVariables)=c("Min","1stQu","Median","Mean","3rdQu","Max","NA")
-write.csv(quantVariables,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.",myTimeStamp,".csv")
+write.csv(quantVariables,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.tables.",myTimeStamp,".csv"))
 print("time to write files:Stop")
 print(proc.time())
 
