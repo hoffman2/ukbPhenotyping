@@ -2880,7 +2880,7 @@ bd[,f_4067_0_0_f_BIN_Facial_pains_for_3_months_vs_no_pain:=ifelse(specialRequest
 bd[,specialRequest_BIN_joint_pain_versus_no_pain := ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1|f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1|f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1,1,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0 & f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0,0,NA))]
 
 #Create time stamp to append to phenotype file
-myTimeStamp=gsub(pattern="-","",as.character(myDate))
+myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
 #Remove non essential variables from full phentoype matrix before outputting to file but first create a list of variables that have been coded to this point
 write.table(names(bd),file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.names.",myTimeStamp,".csv"),sep=",",quote=F)
 bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
