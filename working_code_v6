@@ -188,14 +188,16 @@ bd[,f.3062.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3062.0.1,NA)]
 bd[,f.3062.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3062.0.2,NA)]
 bd[,f.3062.0_f_QUANT_FVC_maximumValue := apply(select(bd,starts_with("f.3062.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3062.0_f_QUANT_FVC_maximumValue"]])),j="f.3062.0_f_QUANT_FVC_maximumValue",value=NA)
-
+bd[,f.3062.0_f_QUANT_FVC_maximumValue_strict:=ifelse(f.20152.0.0==1,f.3062.0_f_QUANT_FVC_maximumValue,NA)]
 #Take maximum of first instance Field 3063 that passed QC using martin tobin definition of field 3161 equaling 0 or 32 for an acceptable blow
-#Also included 20152 which dewfined reproducibility of best measure
+
 bd[,f.3063.0.0 :=ifelse(f.3061.0.0==0|f.3061.0.0==32,f.3063.0.0,NA)]
 bd[,f.3063.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3063.0.1,NA)]
 bd[,f.3063.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3063.0.2,NA)]
 bd[,f.3063.0_f_QUANT_FEV1_maximumValue := apply(select(bd,starts_with("f.3063.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_maximumValue",value=NA)
+#Also included 20152 which defines reproducibility of best measure
+bd[,f.3063.0_f_QUANT_FEV1_maximumValue_strict:=ifelse(f.20152.0.0==1,f.3063.0_f_QUANT_FEV1_maximumValue,NA)]
 
 #Take maximum of first instance Field 3064
 #Also included 20152 which defined reproducibility of best measure
@@ -204,6 +206,7 @@ bd[,f.3064.0.1 :=ifelse(f.3061.0.1==0|f.3061.0.1==32,f.3064.0.1,NA)]
 bd[,f.3064.0.2 :=ifelse(f.3061.0.2==0|f.3061.0.2==32,f.3064.0.2,NA)]
 bd[,f.3064.0_f_QUANT_PEF_maximumValue := apply(select(bd,starts_with("f.3064.0")),1,max,na.rm=T)]
 set(bd,i=which(is.infinite(bd[["f.3064.0_f_QUANT_PEF_maximumValue"]])),j="f.3064.0_f_QUANT_PEF_maximumValue",value=NA)
+bd[,f.3064.0_f_QUANT_PEF_maximumValue_strict:=ifelse(f.20152.0.0==1,f.3064.0_f_QUANT_PEF_maximumValue,NA)]
 #####################################################################################################################################
 #When predicting FEV1 need to use more stringent criteria for generating the FEV1pred
 #Need to use an "and" statement for the 20152 field
@@ -2584,9 +2587,9 @@ copdPrimarySecondWithEpiData_hospital <- copdPrimarySecondWithEpiData_hospital[!
 #With unique episodes, create the counts
 #Default behavior to return counts of code per subject
 copdPrimarySecondWithEpiData_hospital_Wide <-dcast(copdPrimarySecondWithEpiData_hospital, eid ~ diag3char, value.var = c("diag3char"))
-names(copdPrimarySecondWithEpiData_hospital_Wide)=c("IID","specialRequest_QUANT_number_of_hospitalizing_exacerbation")
+names(copdPrimarySecondWithEpiData_hospital_Wide)=c("f_eid","specialRequest_QUANT_number_of_hospitalizing_exacerbation")
 #Merge to full data table
-bd <- merge(bd,copdPrimarySecondWithEpiData_hospital_Wide,all.x=TRUE)
+bd <- merge(bd,copdPrimarySecondWithEpiData_hospital_Wide,by="f_eid",all.x=TRUE)
 #Subjects with NA are set to zero
 bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
 #Case only Tobin
@@ -2605,18 +2608,18 @@ fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1465")),
 fieldHES="HES_block_p_M15_M19_Arthrosis_BIN"
 bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 #Create osteo special request variable
-bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis==1,1,
-  ifelse(bd$HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,bd$map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis))]
+bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,ifelse(bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]==1,1,
+  bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]))]
 
 #OA hip
-bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
-  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
+bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 #OA knee
-bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==1,1,
-  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
+bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M17_BIN_Gonarthrosis==1,1,
+  ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 #OA hip and/or knee
-bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
-  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
+bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
 #renal kidney failure updated with block coding
 bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure:=NULL]
