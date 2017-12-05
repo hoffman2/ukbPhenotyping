@@ -646,11 +646,11 @@ fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("DX"))
 fieldWide[is.na(fieldWide)]=0
 #For subjects that were  coded as missing(-9), convert all of their rows to NA
 fieldWide[fieldWide$`-9`==-9,c(2:ncol(fieldWide))]=NA
+#All pain is an exclusive phenotype that needs to be updated so that the other pain variables equal 1
+fieldWide[fieldWide$`8`==1,c(2:ncol(fieldWide))]=1
 #Remove the columns that are by-products of the coding
 fieldWide[,c("-9","NA","0"):=NULL]
-#Read in a file that has the pain code definitions in the same order as the columns
-#Need to update this to first find the code definitions column and then column code
-#fieldNames<-fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/painForRename.ls", header=FALSE, sep="\t")
+#Grab code descriptions
 fieldNames <- dataCoding[Coding=="100553",]
 names(fieldNames)[2:3]=c("V1","V2")
 names(fieldWide)[2:length(names(fieldWide))]=paste0("code",names(fieldWide)[2:length(names(fieldWide))])
@@ -2451,6 +2451,7 @@ bd[,specialRequest_QUANT_FEV1_FVC_ratio_strict := ifelse(f_20152_0_0_f_BIN_Repro
 #Same ratio but with martin tobin best measure
 bd[,specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived := f_20150_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_Best_measure/f_20151_0_0_f_QUANT_Forced_vital_capacity_FVC_Best_measure]
 #With ERS_reproducibility
+bd[,f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict:=ifelse(f_20152_0_0_f_BIN_Reproduciblity_of_spirometry_measurement_using_ERS_ATS_criteria==1,f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage,NA)]
 bd[,specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict := ifelse(f_20152_0_0_f_BIN_Reproduciblity_of_spirometry_measurement_using_ERS_ATS_criteria==1,specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived,NA)]
 #Martin Tobin best measure with reproducibility
 bd[,f_20150_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_Best_measure_strict := ifelse(f_20152_0_0_f_BIN_Reproduciblity_of_spirometry_measurement_using_ERS_ATS_criteria==1,f_20150_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_Best_measure,NA)]
@@ -2539,20 +2540,30 @@ bd[,asthma_prim:=ifelse(is.na(asthma_prim),0,asthma_prim)]
 bd[,copd_prim_second:=ifelse(is.na(copd_prim_second),0,copd_prim_second)]
 bd[,asthma_prim_second:=ifelse(is.na(asthma_prim_second),0,asthma_prim_second)]
 #Create a spirometry based phenotype
-bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,0)]
-bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,0)]
-#Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and hes code "J44". Do this for strict and loose defined spirometry(field 20152)
+bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred>80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred_strict>80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict<=0.7&f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7&f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted>80,0,NA))]
+
+#Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and primary hes code "J44". Do this for strict and loose defined spirometry(field 20152)
 bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0,0,NA))]
-#Exclude Asthma subjects
+bd[,specialRequest_BIN_copdMappingStrict_tobin_derived:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==0,0,NA))]
+
+#Exclude Asthma subjects based only on primary HES diagnoses as well as self-reported asthma (conversations with Dan and Mathias)
 bd[,specialRequest_BIN_copdMappingLoose_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict_noAsthma:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse((copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_noAsthma_tobin_derived:=ifelse((copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse((copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),0,NA))]
+
 #Include COPD primary and secondary
 bd[,specialRequest_BIN_copdMappingLoose_primAndSec:=ifelse(copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict_primAndSec:=ifelse(copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1,1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0,0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_primAndSec_tobin_derived:=ifelse(copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==1,1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==0,0,NA))]
+
 #Include COPD primary and secondary, no asthma for each
 bd[,specialRequest_BIN_copdMappingLoose_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim!=1),1,ifelse(copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
+bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec_tobin_derived:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
+
 #Create exacerbation variable using definition by Hana
 hesDataCOPDExacPrimHannaDefinition <- hesDataPrim[diag %like% "J440"|diag %like% "J441"|diag %like% "J449",]
 hesDataCOPDExacSecHannaDefinition <- hesDataSec[diag %like% "J440"|diag %like% "J441",]
@@ -2562,11 +2573,16 @@ hesDataCOPDExacPrimarySecondaryHannaDefinition[,specialRequest_BIN_copdExacerbat
 bd <- merge(bd,hesDataCOPDExacPrimarySecondaryHannaDefinition[,c("eid","specialRequest_BIN_copdExacerbation_hanna_definition")],by.x="f_eid",by.y="eid",all.x=T)
 bd[,specialRequest_BIN_copdExacerbation_hanna_definition:=ifelse(is.na(specialRequest_BIN_copdExacerbation_hanna_definition),0,specialRequest_BIN_copdExacerbation_hanna_definition)]
 bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly:=ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,ifelse(f_20160_0_0_f_BIN_Ever_smoked==1,specialRequest_BIN_copdExacerbation_hanna_definition,NA))]
-#GOLD STAGES based on martin tobin (main difference is the use of smokers with at least 0.42 for proportion of pack years in life)
-bd[,specialRequest_QUANT_GOLD_tobin := ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=80,1,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<=79 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=50,2,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<=49 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage>=30,3,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage<30,4,NA))))]
-#GOLD STAGES without factoring pack years
-bd[,specialRequest_QUANT_GOLD := ifelse(specialRequest_QUANT_FEV1_percent_pred_strict>=80,1,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<=79 & specialRequest_QUANT_FEV1_percent_pred_strict>=50,2,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<=49 & specialRequest_QUANT_FEV1_percent_pred_strict>=30,3,ifelse(specialRequest_QUANT_FEV1_percent_pred_strict<30,4,NA))))]
-#COPD phenotype
+#GOLD STAGES based on martin tobin (main difference is the use of smokers with at least 0.42 for proportion of pack years in life). Uses subjects that meet ERS/ATS criteria
+bd[,specialRequest_QUANT_GOLD_tobin := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7|is.na(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict)|is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=80,1,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=79 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=50,2,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=49 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=30,3,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<30,4,NA))))))]
+#Hanna_definition_with_GOLD_2_or_higher. This is a case only variable. Looking at exacerbators versus non-exacerbators
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition))]
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly))]
+#Hanna_definition_with_GOLD_2_or_higher or any type of COPD diagnosis. This is a case only variable. Looking at exacerbators versus non-exacerbators
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition)]
+bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly)]
+
+#COPD phenotype (Hanna definition)
 #Need to get diagnosis dates for secondaries using primary data
 copdPrimForExac <- hesDataPrim[diag %like% "J440"|diag %like% "J441"|diag %like% "J449",.(eid,admidate,diag,disdate,epidur,epistart,epiend,record_id)]
 copdSecForExac <- hesDataSec[diag %like% "J440"|diag %like% "J441",]
@@ -2587,17 +2603,15 @@ copdPrimarySecondWithEpiData_hospital <- copdPrimarySecondWithEpiData_hospital[!
 #With unique episodes, create the counts
 #Default behavior to return counts of code per subject
 copdPrimarySecondWithEpiData_hospital_Wide <-dcast(copdPrimarySecondWithEpiData_hospital, eid ~ diag3char, value.var = c("diag3char"))
-names(copdPrimarySecondWithEpiData_hospital_Wide)=c("f_eid","specialRequest_QUANT_number_of_hospitalizing_exacerbation")
+names(copdPrimarySecondWithEpiData_hospital_Wide)=c("f_eid","specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation")
 #Merge to full data table
 bd <- merge(bd,copdPrimarySecondWithEpiData_hospital_Wide,by="f_eid",all.x=TRUE)
 #Subjects with NA are set to zero
-bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
-#Case only Tobin
-bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation_caseOnly_tobin := ifelse(specialRequest_QUANT_number_of_hospitalizing_exacerbation==0&as.numeric(specialRequest_QUANT_GOLD_tobin)==1,NA,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
-#Case only internally derived
-bd[,specialRequest_QUANT_number_of_hospitalizing_exacerbation_caseOnly := ifelse(specialRequest_QUANT_number_of_hospitalizing_exacerbation==0&as.numeric(specialRequest_QUANT_GOLD)==1,NA,specialRequest_QUANT_number_of_hospitalizing_exacerbation)]
-
-
+bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+#Case only Tobin with GOLD stage 2 criteria defined using martin tobin FEV1 and FEV1/FVC ratio with ERS/ATS criteria
+bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_SPIROMETRY := ifelse(as.numeric(specialRequest_QUANT_GOLD_tobin)==1|is.na(specialRequest_QUANT_GOLD_tobin),NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_smokersOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked)|f_20160_0_0_f_BIN_Ever_smoked==0,NA,ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation))]
 
 ###########################################################################################################################
 
@@ -2610,7 +2624,6 @@ bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(b
 #Create osteo special request variable
 bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,ifelse(bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]==1,1,
   bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]))]
-
 #OA hip
 bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
   ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
@@ -2868,16 +2881,21 @@ hesDataOA <- hesDataOA[!duplicated(hesDataOA,by=c("eid")),]
 bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(IID %in% hesDataOA[["eid"]],1,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA))]
 bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_osteoarthritis_non_load_bearing_joints)]
 #Pain extremes
+#Update the controls to be controls for just specific phenotype
 bd[,specialRequest_any_pain_6159:=ifelse(f_6159_code1_BIN_Headache==0 & f_6159_code2_BIN_Facial_pain==0 & f_6159_code3_BIN_Neck_or_shoulder_pain==0 & f_6159_code4_BIN_Back_pain==0 & f_6159_code5_BIN_Stomach_or_abdominal_pain==0 & f_6159_code6_BIN_Hip_pain==0 & f_6159_code7_BIN_Knee_pain==0 & f_6159_code8_BIN_Pain_all_over_the_body==0,0,ifelse(f_6159_code1_BIN_Headache==1 | f_6159_code2_BIN_Facial_pain==1 | f_6159_code3_BIN_Neck_or_shoulder_pain==1 | f_6159_code4_BIN_Back_pain==1 | f_6159_code5_BIN_Stomach_or_abdominal_pain==1 | f_6159_code6_BIN_Hip_pain ==1 | f_6159_code7_BIN_Knee_pain==1 | f_6159_code8_BIN_Pain_all_over_the_body==1,1,NA))]
-bd[,f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_2956_0_0_f_BIN_General_pain_for_3_months==1,1,NA))]
-bd[,f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months==1,1,NA))]
-bd[,f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months==1,1,NA))]
-bd[,f_3571_0_0_f_BIN_Back_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3571_0_0_f_BIN_Back_pain_for_3_months==1,1,NA))]
-bd[,f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months==1,1,NA))]
-bd[,f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3773_0_0_f_BIN_Knee_pain_for_3_months==1,1,NA))]
-bd[,f_3799_0_0_f_BIN_Headaches_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_3799_0_0_f_BIN_Headaches_for_3_months==1,1,NA))]
-bd[,f_4067_0_0_f_BIN_Facial_pains_for_3_months_vs_no_pain:=ifelse(specialRequest_any_pain_6159==0,0,ifelse(f_4067_0_0_f_BIN_Facial_pains_for_3_months==1,1,NA))]
-bd[,specialRequest_BIN_joint_pain_versus_no_pain := ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1|f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1|f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1,1,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0 & f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0,0,NA))]
+bd[,f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code8_BIN_Pain_all_over_the_body==0,0,ifelse(f_2956_0_0_f_BIN_General_pain_for_3_months==1,1,NA))]
+bd[,f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code3_BIN_Neck_or_shoulder_pain==0,0,ifelse(f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months==1,1,NA))]
+bd[,f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code6_BIN_Hip_pain==0,0,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months==1,1,NA))]
+bd[,f_3571_0_0_f_BIN_Back_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code4_BIN_Back_pain==0,0,ifelse(f_3571_0_0_f_BIN_Back_pain_for_3_months==1,1,NA))]
+bd[,f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code5_BIN_Stomach_or_abdominal_pain==0,0,ifelse(f_3741_0_0_f_BIN_Stomach_abdominal_pain_for_3_months==1,1,NA))]
+bd[,f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain:=ifelse(f_6159_code7_BIN_Knee_pain==0,0,ifelse(f_3773_0_0_f_BIN_Knee_pain_for_3_months==1,1,NA))]
+bd[,f_3799_0_0_f_BIN_Headaches_for_3_months_vs_no_pain:=ifelse(f_6159_code1_BIN_Headache==0,0,ifelse(f_3799_0_0_f_BIN_Headaches_for_3_months==1,1,NA))]
+bd[,f_4067_0_0_f_BIN_Facial_pains_for_3_months_vs_no_pain:=ifelse(f_6159_code2_BIN_Facial_pain==0,0,ifelse(f_4067_0_0_f_BIN_Facial_pains_for_3_months==1,1,NA))]
+bd[,specialRequest_BIN_joint_pain_versus_no_pain_union := ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1|f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1|f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1,1,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0 & f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0,0,NA))]
+#Same as above but keep with super controls and super cases. This is a similar definition to general pain
+bd[,specialRequest_BIN_joint_pain_versus_no_pain_intersection := ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1&f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1,1,ifelse(f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0 & f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0,0,NA))]
+#Create an any pain 3+ month analysis
+bd[,specialRequest_any_pain_for_3_months_vs_no_pain:=ifelse(f_3571_0_0_f_BIN_Back_pain_for_3_months_vs_no_pain==0&f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain==0&f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==0&f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==0&f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==0,0,ifelse(f_3571_0_0_f_BIN_Back_pain_for_3_months_vs_no_pain==1|f_2956_0_0_f_BIN_General_pain_for_3_months_vs_no_pain==1|f_3414_0_0_f_BIN_Hip_pain_for_3_months_vs_no_pain==1|f_3773_0_0_f_BIN_Knee_pain_for_3_months_vs_no_pain==1|f_3404_0_0_f_BIN_Neck_shoulder_pain_for_3_months_vs_no_pain==1,1,NA))]
 
 #Create time stamp to append to phenotype file
 myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
