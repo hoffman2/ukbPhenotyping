@@ -111,7 +111,6 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100291"]$FieldID)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
 
-
 #Recode 100631 (99=1)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100631"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
@@ -217,10 +216,10 @@ set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_maximumValue_forFEV1_Pred"
 #####################################################################################################################################
 #Derived my own ERS/ATS variable for blow reproducibility (same code as above)
 #Need second highest number after max fev
-bd[,f.3063.0_f_QUANT_FEV1_2nd_maximumValue := apply(select(bd,starts_with("f.3063.0.")),1,function(x) {sort(x,decreasing=T)[][2]})]
-set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_2nd_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_2nd_maximumValue",value=NA)
-bd[,f.20152.0_f_BIN_derived_ERS_ATS := ifelse(f.3063.0_f_QUANT_FEV1_maximumValue>=1&(f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.150 & !is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,
-  ifelse((f.3063.0_f_QUANT_FEV1_maximumValue < 1 & (f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.100)&!is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,0))]
+# bd[,f.3063.0_f_QUANT_FEV1_2nd_maximumValue := apply(select(bd,starts_with("f.3063.0.")),1,function(x) {sort(x,decreasing=T)[][2]})]
+# set(bd,i=which(is.infinite(bd[["f.3063.0_f_QUANT_FEV1_2nd_maximumValue"]])),j="f.3063.0_f_QUANT_FEV1_2nd_maximumValue",value=NA)
+# bd[,f.20152.0_f_BIN_derived_ERS_ATS := ifelse(f.3063.0_f_QUANT_FEV1_maximumValue>=1&(f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.150 & !is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,
+#   ifelse((f.3063.0_f_QUANT_FEV1_maximumValue < 1 & (f.3063.0_f_QUANT_FEV1_maximumValue-f.3063.0_f_QUANT_FEV1_2nd_maximumValue)<=.100)&!is.na(f.3063.0_f_QUANT_FEV1_2nd_maximumValue)&!is.na(f.3063.0_f_QUANT_FEV1_maximumValue),1,0))]
 
 #Mean of dystolic blood pressure Field 4079
 bd[,f.4079.0_f_QUANT_Diastolic_blood_pressure_mean := apply(select(bd,starts_with("f.4079.0")),1,mean,na.rm=T)]
@@ -432,7 +431,7 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100343"]$FieldID)
 #Recode Data code 100539
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100539"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
-  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3|bd[[field]]==-1), j=field, value=NA)}
 
 #Recode Data code 272
 #We also want to create a new phenotype variable for this code(do this first as we need the unknown date information)
@@ -443,7 +442,8 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
   #If subject has a date present than set to cases, otherwise leave alone
   for(field in fieldArray) set(bd, i=which(!is.na(bd[[field]])), j=paste0(field,"_BIN_pheno"), value=1)
   #Set missingness code
-  for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=paste0(field,"_BIN_pheno"), value=NA)}
+  #Even though date is missing, we would like to still keep as case( commenting out line below)
+  #for(field in fieldArray) set(bd, i=which(bd[[field]]=="1900-01-01"), j=paste0(field,"_BIN_pheno"), value=NA)}
 
 for(currentField in dataDictionary[dataDictionary$Coding %in% "272"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
@@ -571,6 +571,15 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100569"]$FieldID)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
 
+#100635 (Zero is coded correctly. Ommited from numbers below)
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100635"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==11), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==14), j=field, value=1)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
 #100637
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100637"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
@@ -578,6 +587,11 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100637"]$FieldID)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==12), j=field, value=2)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==13), j=field, value=1)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1|bd[[field]]==-3), j=field, value=NA)}
+
+#100696
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100696"]$FieldID){
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)}
 
 #100699
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100699"]$FieldID){
@@ -588,6 +602,8 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "100699"]$FieldID)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "224"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==0|bd[[field]]==3|bd[[field]]==9), j=field, value=NA)}
+
+
 
 # #field 6142 related to employement. Keeping it as a category since only to be used as covariate in pain phenotyping
 # for(currentField in dataDictionary[dataDictionary$Coding %in% "100295"]$FieldID){
@@ -728,7 +744,7 @@ bd<-bd[fieldWide,nomatch="0",on="f.eid"]
 fieldArray=names(select(bd,c(starts_with("f.20007.0"),starts_with("f.20001.0"),starts_with("f.20006.0"))))
 justFields <- bd[,c("f.eid",fieldArray),with=FALSE]
 #Bug fix for subjects with all missing
-set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
+#set(justFields, i=which((ncol(justFields)-1)==rowSums(is.na(justFields))), j=fieldArray, value=-3)
 #Take the arrayed field and put into long format, using the f.eid as the key(keyed values do not need to be explicit in statement)
 #In this case we want to have the corresponding year and age attached to the DX so using both fields as our measure
 fieldLong = melt(justFields, measure = patterns("^f.20007.", "^f.20001.","^f.20006."), variable.name="arbField",value.name = c("dxAge","dxField","dxYear"))
@@ -737,7 +753,6 @@ fieldLong$DX=NA
 fieldLong$DX=as.integer(fieldLong$DX)
 #For any code > 0 assign caseCode a value of 1
 set(fieldLong, i=which(fieldLong[["dxField"]]>0), j="DX", value=1)
-set(fieldLong, i=which(fieldLong[["dxField"]]==-3), j=c("DX","dxField"), value=-9)
 #remove the field column as no longer relevant
 fieldLong[,"arbField":=NULL]
 #Remove duplicate columns using the subject ID,and cancerDX codes as the key
@@ -749,9 +764,7 @@ fieldWide<-dcast(fieldLong, f.eid ~ dxField, value.var = c("dxAge","DX","dxYear"
 fieldWide[,c("dxAge_NA","DX_NA","dxYear_NA"):=NULL]
 #Convert all of the cancerDX NA's in the table to 0s, leave the dxAges alone(leave NA if already NA)
 for(currentName in names(fieldWide)[grep("DX",names(fieldWide))]) set(fieldWide, i=which(is.na(fieldWide[[currentName]])), j=currentName, value=0)
-#Bug fix for subjects with all missing
-fieldWide[fieldWide$`DX_-9`==-9,c(2:ncol(fieldWide))]=NA
-fieldWide[,c("-9","NA","0"):=NULL]
+fieldWide[,c("dxAge_-9","NA","0","-9","DX_-9"):=NULL]
 #Use the data coding file to assign names to the wide formatted vairables
 fieldNames <- dataCoding[Coding=="3",]
 names(fieldNames)[2:3]=c("V1","V2")
@@ -1839,7 +1852,7 @@ print("Finished aggregating HES data")
 
 #######################################################################################################################################
 #HES Data Primary Only
-print("Aggregate HES data")
+print("Aggregate HES data for primary codes only")
 #HES Data
 #Read in the primary and seconday diagnosis files that were previously generated by Robert Scott
 hesDataPrim <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/HESIN_26041_all.minus4226129.tsv",header=T,sep="\t",na.strings="")
@@ -1929,7 +1942,6 @@ fieldNames<-fread(file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/depe
 fieldNames$PHENOTYPE=gsub("[[:punct:]]", "_",fieldNames$PHENOTYPE)
 for(currentName in names(fieldWide)[grep("p",names(fieldWide))]){shortName=gsub("p_","p_",currentName);setnames(fieldWide,names(fieldWide)[grep(paste0("^",currentName,"$"),names(fieldWide))],paste("f.40001.0",shortName,"BIN",filter(fieldNames,pheno==shortName)["PHENOTYPE"],sep = "_"))}
 bd<-bd[fieldWide,nomatch="0",on="f.eid"]
-
 
 ######################################################################################################################
 
@@ -2030,7 +2042,6 @@ for(currentField in myNamingScheme$FieldID){
     removeFields=grep(removeFields,pattern="QUANT",invert=T,value=T)
     removeFields=grep(removeFields,pattern="CAT",invert=T,value=T)
     removeFields=grep(removeFields,pattern="COORD",invert=T,value=T)
-    removeFields=grep(removeFields,pattern="DATE",invert=T,value=T)
     removeFields=grep(removeFields,pattern="DATE",invert=T,value=T)
     removeFields=grep(removeFields,pattern="22009",invert=T,value=T)
     bd[,(removeFields):=NULL]
@@ -2167,13 +2178,15 @@ for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {bd[,paste0("
 for(chapterHES in hesOntology[!duplicated(hesOntology$CAT1),CAT1]) {phenoList=hesOntology[CAT1==chapterHES,"hesCode"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("HES_chapter_p_",chapterHES,"_BIN"), value=1)}}
 
 # #Do the same thing for the cancer registry data
+#Remove other malignant neoplasms (Suggestions from Robert S).
+bd[,f_40006_0_p_C44_BIN_Other_malignant_neoplasms_of_skin:=NULL]
 # #Create a variable for each block, settin geveryone initially as a control
 for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {bd[,paste0("f_40006_block_",blockHES,"_BIN") := 0]}
 # #For each block, iterate through all the original phewas codes that make up that block and assign case status to that block variable if "1" is present in PheWas code
-for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"cancerRegVar"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
+for(blockHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT2)]$CAT2) {phenoList=hesOntology[CAT2==blockHES,"cancerRegVar"];for(phenoVariable in phenoList$cancerRegVar){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_block_",blockHES,"_BIN"), value=1)}}
 # #Chapter variable
 for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {bd[,paste0("f_40006_chapter_",chapterHES,"_BIN") := 0]}
-for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {phenoList=hesOntology[CAT1==chapterHES,"cancerRegVar"];for(phenoVariable in phenoList$hesCode){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_chapter_",chapterHES,"_BIN"), value=1)}}
+for(chapterHES in hesOntology[CAT2 %like% "^C|^D|^O0"][!duplicated(CAT1)]$CAT1) {phenoList=hesOntology[CAT1==chapterHES,"cancerRegVar"];for(phenoVariable in phenoList$cancerRegVar){set(bd, i=which(bd[[phenoVariable]]==1), j=paste0("f_40006_chapter_",chapterHES,"_BIN"), value=1)}}
 
 #####################################################################################################################################
 #RWD performed an update to the two way mapping
@@ -2270,9 +2283,9 @@ for(currentName in names(bd)[grep("map2way_NI_code",names(bd))]) setnames(bd,nam
 #Create total fracture group using 2 way mappings
 fractureList <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/fractureList.ls",header=F)
 #First set everone to 0(no fractures)
-bd[,specialRequest_map2way_combinedFractures:=0]
+bd[,specialRequest_map2way_BIN_combinedFractures:=0]
 #Used an apply statement;if subject has any frtacture in the list, than code as 1, else leave alone
-set(bd,i=which(apply(bd[, names(bd) %in% fractureList[["V1"]],with=FALSE]==1,1,any)),j="specialRequest_map2way_combinedFractures",value=1)
+set(bd,i=which(apply(bd[, names(bd) %in% fractureList[["V1"]],with=FALSE]==1,1,any)),j="specialRequest_map2way_BIN_combinedFractures",value=1)
 
 #####################################################################################################################################
 # #Tabulate two mapping data
@@ -2305,7 +2318,7 @@ code2="map2way_NI_code1094_BIN_deep_venous_thrombosis_dvt"
 # code4=ifelse(length(code4)==0,"zeroColumn",code4)
 group="dvt"
 #bd[, map3way_f6152_code5_intCode1094_hesCode_1801_1802_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0,0,NA))]
-bd[, map3way_f6152_code5_intCode1094_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f6152_code5_intCode1094_BIN_DVT_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
 
 # #emphysema_bronchitis
 code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code6",value=TRUE)
@@ -2328,7 +2341,7 @@ code4="map2way_NI_code1472_BIN_emphysema"
 code8=grep(x=names(bd),pattern="f\\.22129\\.0",value=TRUE)
 code8=ifelse(length(code8)==0,"zeroColumn",code8)
 # bd[, map3way_f6152_code6_intCode1113_1412_1472_hesCode_J41_J42_J43_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0& bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
-bd[, map3way_f6152_code6_intCode1113_1412_1472_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0 & bd[[code8]]== 0,0,NA))]
+#bd[, map3way_f6152_code6_intCode1113_1412_1472_f22129_BIN_emphysema_bronchitis_group_respiratory:=ifelse((bd[[code1]]==0|is.na(bd[[code1]])) & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code4]]==0 & (bd[[code8]]== 0|is.na(bd[[code8]])),0,ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code4]]==1|bd[[code8]]==1,1,NA))]
 
 # #pulmonary_embolism
 code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code7",value=TRUE)
@@ -2339,7 +2352,7 @@ code2="map2way_NI_code1093_BIN_pulmonary_embolism_dvt"
 # code5=grep(x=names(bd),pattern="HES_p_I26",value=TRUE)
 # code5=ifelse(length(code5)==0,"zeroColumn",code5)
 # bd[, map3way_f6152_code7_intCode1093_hesCode_I26_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
-bd[, map3way_f6152_code7_intCode1093_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f6152_code7_intCode1093_pulmonary_BIN_embolism:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
 
 # #asthma
 code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code8",value=TRUE)
@@ -2354,7 +2367,7 @@ code2="map2way_NI_code1111_BIN_asthma"
 code8=grep(x=names(bd),pattern="f\\.22127\\.0",value=TRUE)
 code8=ifelse(length(code8)==0,"zeroColumn",code8)
 # bd[, map3way_f6152_code8_intCode1111_hesCode_J45_J46_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
-bd[, map3way_f6152_code8_intCode1111_f22127_BIN_asthma_group_respiratory:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code8]]== 0,0,NA))]
+#bd[, map3way_f6152_code8_intCode1111_f22127_BIN_asthma_group_respiratory:=ifelse((bd[[code1]]==0|is.na(bd[[code1]])) & bd[[code2]]==0 & (bd[[code8]]==0|is.na(bd[[code8]])),0,ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code8]]==1,1,NA))]
 
 # #hay_fever_eczema
 code1=grep(x=names(bd),pattern="^f\\.6152\\.0_code9",value=TRUE)
@@ -2372,7 +2385,7 @@ code3="map2way_NI_code1452_BIN_eczemadermatitis"
 code8=grep(x=names(bd),pattern="f\\.22126\\.0",value=TRUE)
 code8=ifelse(length(code8)==0,"zeroColumn",code8)
 # bd[, map3way_f6152_code9_intCode1387_1452_hesCode_L20_J30_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code8]]== 0,0,NA))]
-bd[, map3way_f6152_code9_intCode1387_1452_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code8]]== 0,0,NA))]
+#bd[, map3way_f6152_code9_intCode1387_1452_f22126_BIN_hay_fever_eczema_group_immunological:=ifelse((bd[[code1]]==0|is.na(bd[[code1]])) & bd[[code2]]==0 & bd[[code3]]==0 & (bd[[code8]]== 0|is.na(bd[[code8]])),0,ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code8]]==1,1,NA))]
 
 # #myocardial_infarction
 code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code1",value=TRUE)
@@ -2385,7 +2398,7 @@ code2="map2way_NI_code1075_BIN_heart_attackmyocardial_infarction"
 # code6=grep(x=names(bd),pattern="HES_p_I22",value=TRUE)
 # code6=ifelse(length(code6)==0,"zeroColumn",code6)
 # bd[, map3way_f6150_code1_intCode1075_hesCode_I21_I22_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0,0,NA))]
-bd[, map3way_f6150_code1_intCode1075_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f6150_code1_intCode1075_BIN_myocardial_infarction_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
 
 # #angina
 code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code2",value=TRUE)
@@ -2396,7 +2409,7 @@ code2="map2way_NI_code1074_BIN_angina"
 # code5=grep(x=names(bd),pattern="HES_p_I20",value=TRUE)
 # code5=ifelse(length(code5)==0,"zeroColumn",code5)
 # bd[, map3way_f6150_code2_intCode1074_hesCode_I20_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
-bd[, map3way_f6150_code2_intCode1074_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f6150_code2_intCode1074_BIN_angina_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
 
 # #stroke
 code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code3",value=TRUE)
@@ -2413,7 +2426,7 @@ code2="map2way_NI_code1081_BIN_stroke"
 # code8=grep(x=names(bd),pattern="HES_p_I63",value=TRUE)
 # code8=ifelse(length(code8)==0,"zeroColumn",code8)
 # bd[, map3way_f6150_code3_intCode1081_hesCode_I60_I61_I62_I63_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
-bd[, map3way_f6150_code3_intCode1081_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f6150_code3_intCode1081_BIN_stroke_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
 
 # #hypertension
 code1=grep(x=names(bd),pattern="^f\\.6150\\.0_code4",value=TRUE)
@@ -2433,7 +2446,7 @@ code3="map2way_NI_code1072_BIN_essential_hypertension"
 # code8=grep(x=names(bd),pattern="HES_p_I13",value=TRUE)
 # code8=ifelse(length(code8)==0,"zeroColumn",code8)
 # bd[, map3way_f6150_code4_intCode1065_1072_hesCode_I10_I11_I12_I13_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1|bd[[code5]]==1|bd[[code6]]==1|bd[[code7]]==1|bd[[code8]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0 & bd[[code5]]==0 & bd[[code6]]==0 & bd[[code7]]==0 & bd[[code8]]== 0,0,NA))]
-bd[, map3way_f6150_code4_intCode1065_1072_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
+#bd[, map3way_f6150_code4_intCode1065_1072_BIN_hypertension_group_cardiovascular:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
 
 # #gestational_diabetes
 code1=grep(x=names(bd),pattern="^f\\.4041\\.0",value=TRUE)
@@ -2444,7 +2457,7 @@ code2="map2way_NI_code1221_BIN_gestational_diabetes"
 # code5=grep(x=names(bd),pattern="HES_4or5_char_p_O244",value=TRUE)
 # code5=ifelse(length(code5)==0,"zeroColumn",code5)
 # bd[, map3way_f4041_intCode1221_hesCode_O244_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code5]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code5]]==0,0,NA))]
-bd[, map3way_f4041_intCode1221_BIN_gestational_diabetes_group_endocrine:=ifelse(bd[[code1]]==1|bd[[code2]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0,0,NA))]
+#bd[, map3way_f4041_intCode1221_BIN_gestational_diabetes_group_endocrine:=ifelse((bd[[code1]]==0|is.na(bd[[code1]])) & bd[[code2]]==0,0,ifelse(bd[[code1]]==1|bd[[code2]]==1,1,NA))]
 
 #Cancer
 #created a new variable for 40009 where I replaced NAs with 0s, as subjects without a cancer diagnosis do not contribute to the column(e.g. they are NAs)
@@ -2455,7 +2468,7 @@ bd$cancerSelfSummed=apply(select(bd,starts_with("f.20001.0_DX")),1,sum,na.rm=T)
 code2="cancerSelfSummed"
 code3=grep(x=names(bd),pattern="^f\\.2453\\.0",value=TRUE)
 #I did not include the conditional zero column statements above as all of these columns are present
-bd[, map3way_f2453_intCodeAllCancersSummed_f40009_BIN_cancer_group_oncology:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
+#bd[, map3way_f2453_intCodeAllCancersSummed_f40009_BIN_cancer_group_oncology:=ifelse(bd[[code1]]==1|bd[[code2]]==1|bd[[code3]]==1,1,ifelse(bd[[code1]]==0 & bd[[code2]]==0 & bd[[code3]]==0,0,NA))]
 
 ######################################################################################################################################
 
@@ -2604,7 +2617,7 @@ bd[,asthma_prim_second:=ifelse(is.na(asthma_prim_second),0,asthma_prim_second)]
 #Create a spirometry based phenotype
 bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred>80,0,NA))]
 bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred_strict>80,0,NA))]
-bd[,specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict<=0.7&f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7&f_20153_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted>80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict<=0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>80,0,NA))]
 
 #Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and primary hes code "J44". Do this for strict and loose defined spirometry(field 20152)
 bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
@@ -2709,19 +2722,19 @@ bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure := if
 #AD, Used the Phenotype coding describe by Jimmy Liu in GWAX nature paper
 #F+M
 #Using 0,1,2 coding
-bd[,f_20107_20110_code1_BIN_Heart_disease:=apply(bd[,.(f_20107_0_code1_BIN_Heart_disease,f_20110_0_code1_BIN_Heart_disease)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code2_BIN_Stroke:=apply(bd[,.(f_20107_0_code2_BIN_Stroke,f_20110_0_code2_BIN_Stroke)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code3_BIN_Lung_cancer:=apply(bd[,.(f_20107_0_code3_BIN_Lung_cancer,f_20110_0_code3_BIN_Lung_cancer)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code4_BIN_Bowel_cancer:=apply(bd[,.(f_20107_0_code4_BIN_Bowel_cancer,f_20110_0_code4_BIN_Bowel_cancer)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code6_BIN_Chronic_bronchitis_emphysema:=apply(bd[,.(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema,f_20110_0_code6_BIN_Chronic_bronchitis_emphysema)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code8_BIN_High_blood_pressure:=apply(bd[,.(f_20107_0_code8_BIN_High_blood_pressure,f_20110_0_code8_BIN_High_blood_pressure)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code9_BIN_Diabetes:=apply(bd[,.(f_20107_0_code9_BIN_Diabetes,f_20110_0_code9_BIN_Diabetes)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code10_BIN_Alzheimer_s_disease_dementia:=apply(bd[,.(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia,f_20110_0_code10_BIN_Alzheimer_s_disease_dementia)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code11_BIN_Parkinson_s_disease:=apply(bd[,.(f_20107_0_code11_BIN_Parkinson_s_disease,f_20110_0_code11_BIN_Parkinson_s_disease)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code12_BIN_Severe_depression:=apply(bd[,.(f_20107_0_code12_BIN_Severe_depression,f_20110_0_code12_BIN_Severe_depression)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code13_BIN_Prostate_cancer:=apply(bd[,.(f_20107_0_code13_BIN_Prostate_cancer,f_20110_0_code13_BIN_Prostate_cancer)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code1_QUANT_Heart_disease:=apply(bd[,.(f_20107_0_code1_BIN_Heart_disease,f_20110_0_code1_BIN_Heart_disease)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code2_QUANT_Stroke:=apply(bd[,.(f_20107_0_code2_BIN_Stroke,f_20110_0_code2_BIN_Stroke)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code3_QUANT_Lung_cancer:=apply(bd[,.(f_20107_0_code3_BIN_Lung_cancer,f_20110_0_code3_BIN_Lung_cancer)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code4_QUANT_Bowel_cancer:=apply(bd[,.(f_20107_0_code4_BIN_Bowel_cancer,f_20110_0_code4_BIN_Bowel_cancer)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code6_QUANT_Chronic_bronchitis_emphysema:=apply(bd[,.(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema,f_20110_0_code6_BIN_Chronic_bronchitis_emphysema)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code8_QUANT_High_blood_pressure:=apply(bd[,.(f_20107_0_code8_BIN_High_blood_pressure,f_20110_0_code8_BIN_High_blood_pressure)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code9_QUANT_Diabetes:=apply(bd[,.(f_20107_0_code9_BIN_Diabetes,f_20110_0_code9_BIN_Diabetes)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code10_QUANT_Alzheimer_s_disease_dementia:=apply(bd[,.(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia,f_20110_0_code10_BIN_Alzheimer_s_disease_dementia)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code11_QUANT_Parkinson_s_disease:=apply(bd[,.(f_20107_0_code11_BIN_Parkinson_s_disease,f_20110_0_code11_BIN_Parkinson_s_disease)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code12_QUANT_Severe_depression:=apply(bd[,.(f_20107_0_code12_BIN_Severe_depression,f_20110_0_code12_BIN_Severe_depression)],1,function(x) sum(x,na.rm=T))]
+bd[,f_20107_20110_code13_QUANT_Prostate_cancer:=apply(bd[,.(f_20107_0_code13_BIN_Prostate_cancer,f_20110_0_code13_BIN_Prostate_cancer)],1,function(x) sum(x,na.rm=T))]
 #Set females to NA for prostate cancer
-bd[f_31_0_0_f_BIN_Sex=="0",f_20107_20110_code13_BIN_Prostate_cancer:=NA]
+bd[f_31_0_0_f_BIN_Sex=="0",f_20107_20110_code13_QUANT_Prostate_cancer:=NA]
 # #F+M+S
 # bd[,f_20107_20111_20110_0_code1_BIN_Heart_disease:=ifelse(f_20107_0_code1_BIN_Heart_disease==1|f_20111_0_code1_BIN_Heart_disease==1|f_20110_0_code1_BIN_Heart_disease==1,1,ifelse(f_20107_0_code1_BIN_Heart_disease==0&f_20111_0_code1_BIN_Heart_disease==0&f_20110_0_code1_BIN_Heart_disease==0,0,NA))]
 # bd[,f_20107_20111_20110_0_code2_BIN_Stroke:=ifelse(f_20107_0_code2_BIN_Stroke==1|f_20111_0_code2_BIN_Stroke==1|f_20110_0_code2_BIN_Stroke==1,1,ifelse(f_20107_0_code2_BIN_Stroke==0&f_20111_0_code2_BIN_Stroke==0&f_20110_0_code2_BIN_Stroke==0,0,NA))]
@@ -2773,6 +2786,9 @@ bdNames <- as.data.frame(cbind(names(bd),names(bd)))
 quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
 #Variable for removing brain imaging from phenotype file
 
+#Create Ashutoshes variable (insterted before residualization process)
+bd[,specialRequest_QUANT_appendicular_lean_mass:=f_23258_2_0_f_QUANT_Arms_lean_mass + f_23275_2_0_f_QUANT_Legs_lean_mass]
+
 #Read in Ioanna's covarFile
 covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 #Create a variable to signify that these subjects are for the bolt analysis
@@ -2804,7 +2820,7 @@ for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
 # set(bd_residualization,i=which(is.infinite(bd_residualization[[paste0(phenoVariable,"_residualizedRelated")]])),j=paste0(phenoVariable,"_residualizedRelated"),value=NA)
 # #FEV1
 # #Requires age squared variable
-# bd_residualization[,specialRequest_ageSquared_QUANT_age_squared := age^2]
+bd_residualization[,specialRequest_ageSquared_QUANT_age_squared := age^2]
 # phenoVariable="f_3063_0_f_QUANT_FEV1_maximumValue"
 # residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~f_20160_0_0_f_BIN_Ever_smoked+age+specialRequest_ageSquared_QUANT_age_squared+f_50_0_0_f_QUANT_Standing_height+sex+chip,na.action=na.exclude)
 # bd_residualization[,paste0(phenoVariable,"_residualizedRelated"):=NA]
@@ -2988,15 +3004,28 @@ ifelse(is.na(f_6177_0_code3_BIN_Insulin)&is.na(f_6153_0_code3_BIN_Insulin),NA,
       ifelse(is.na(f_6153_0_code3_BIN_Insulin)&f_6177_0_code3_BIN_Insulin==0,0,
         ifelse(is.na(f_6153_0_code3_BIN_Insulin)&f_6177_0_code3_BIN_Insulin==1,1,NA)))))]
 
-#Create Ashutoshes variable
-bd[,specialRequest_QUANT_appendicular_lean_mass:=f_23258_2_0_f_QUANT_Arms_lean_mass + f_23275_2_0_f_QUANT_Legs_lean_mass]
 #Merge in medication data
 medicationData <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/med_phenotypes_level3.tsv",sep="\t")
 names(medicationData)[3:ncol(medicationData)]=paste0(names(medicationData)[3:ncol(medicationData)],"_BIN_medications")
 bd <- merge(bd,medicationData[,c("IID",names(medicationData)[3:ncol(medicationData)]),with=F],by="IID",all.x=T)
 #For subjects that are missing from the medication table set to 0
 for(currentField in names(medicationData)[3:length(names(medicationData))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
+#Bone-density data
+bd[,f_3148_4105_4124_f_QUANT_BMD_Combined:=
+ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&!is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left),f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left,
+  ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left)&!is.na(f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right),f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right,
+    ifelse(!is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD),f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD,NA)))]
 
+#Remove other malignant neoplasms (Suggestions from Robert S)
+bd[,f_40006_0_p_C44_BIN_Other_malignant_neoplasms_of_skin:=NULL]
+#Any case from all cancer registry
+bd[,f_40006_0_p_anyCancer_from_cancer_reg:=0]
+set(bd,i=which(apply(bd[,names(bd) %like% "f_40006_0_p",with=FALSE]==1,1,any)),j="f_40006_0_p_anyCancer_from_cancer_reg",value=1)
+#Manually rename a few of the variables that we created cases/control from date information
+names(bd)=gsub(pattern="_pheno_f_DATE_Date_of_first","",names(bd))
+#Modify cognitive function
+bd[,f_20016_20191_0_0_f_QUANT_Fluid_intelligence_score:= ifelse(is.na(f_20016_0_0_f_QUANT_Fluid_intelligence_score),f_20191_0_0_f_QUANT_Fluid_intelligence_score,f_20016_0_0_f_QUANT_Fluid_intelligence_score)]
+bd[,f_4282_20240_0_0_f_QUANT_Maximum_digits_remembered_correctly:=ifelse(is.na(f_4282_0_0_f_QUANT_Maximum_digits_remembered_correctly),f_20240_0_0_f_QUANT_Maximum_digits_remembered_correctly,f_4282_0_0_f_QUANT_Maximum_digits_remembered_correctly)]
 #Create time stamp to append to phenotype file
 myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
 #create a list of variables that have been coded to this point
@@ -3014,7 +3043,7 @@ close(connectionAll)
 #Write Binary File
 connectionBin <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
-write.table(bd[,c("FID","IID",grep("BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+write.table(bd[,c("FID","IID",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
@@ -3025,19 +3054,92 @@ close(connectionQuant)
 
 #Summarize variables
 #Tabulate Data for checking counts and create a seperate CSV file. A little trickier as some traits have varying number of columns
-{combineTable<-data.frame(matrix(nrow=2,ncol=2))
-   names(combineTable)=c("remove1","remove2")
-   for (i in names(bd)[grep("BIN",names(bd))]) {
-     tryCatch({
-     myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
-     combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
-     #print(i)
-  },error=function(e){}) }
-     combineTable <- combineTable[,!duplicated(colnames(combineTable))]
-     combineTable <- select(combineTable,contains("BIN"))
-     #print(i)
-     write.csv(t(combineTable),quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.",myTimeStamp,".csv"))
-   }
+#Since this is the case I decided to build an empty matrix and fill in columns individually based on category
+
+binaryTraits=names(bd)[bd[,names(bd) %like% "_BIN"]]
+myTable<-matrix(nrow=length(binaryTraits),ncol=10)
+colnames(myTable)=c("Field","Controls","Cases","Missing","Bolt_Controls","Bolt_Cases","Unrelated_Controls","Unrelated_Cases","Exome_Controls","Exome_Cases")
+myTable[,"Field"]=binaryTraits
+row.names(myTable)=binaryTraits
+#Raw tabulation
+for(i in binaryTraits){
+	if(length(bd[bd[[i]]==0,.N,by=i][["N"]])>0)
+	myTable[i,"Controls"]=bd[bd[[i]]==0,.N,by=i][["N"]]
+	else(myTable[i,"Controls"]=0)
+}
+for(i in binaryTraits){
+	if(length(bd[bd[[i]]==1,.N,by=i][["N"]])>0)
+	myTable[i,"Cases"]=bd[bd[[i]]==1,.N,by=i][["N"]]
+	else(myTable[i,"Cases"]=0)
+}
+print("Done with raw tabulation")
+#Bolt tabulation
+bd_bolt<- merge(bd,covarFiles,by=c("FID","IID"))
+for(i in binaryTraits){
+	if(length(bd_bolt[bd_bolt[[i]]==0,.N,by=i][["N"]])>0)
+	myTable[i,"Bolt_Controls"]=bd_bolt[bd_bolt[[i]]==0,.N,by=i][["N"]]
+	else(myTable[i,"Bolt_Controls"]=0)
+}
+for(i in binaryTraits){
+	if(length(bd_bolt[bd_bolt[[i]]==1,.N,by=i][["N"]])>0)
+	myTable[i,"Bolt_Cases"]=bd_bolt[bd_bolt[[i]]==1,.N,by=i][["N"]]
+	else(myTable[i,"Bolt_Cases"]=0)
+}
+print("Done with BOLT tabulation")
+rm(bd_bolt)
+#Unrelated Tabulation
+unrelatedSubjects <- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_GWASdownload/DataQC/sample_id/impv1.fam")
+bd_unrelated <- bd[IID %in% unrelatedSubjects[["V2"]],]
+for(i in binaryTraits){
+	if(length(bd_unrelated[bd_unrelated[[i]]==0,.N,by=i][["N"]])>0)
+	myTable[i,"Unrelated_Controls"]=bd_unrelated[bd_unrelated[[i]]==0,.N,by=i][["N"]]
+	else(myTable[i,"Unrelated_Controls"]=0)
+}
+for(i in binaryTraits){
+	if(length(bd_unrelated[bd_unrelated[[i]]==1,.N,by=i][["N"]])>0)
+	myTable[i,"Unrelated_Cases"]=bd_unrelated[bd_unrelated[[i]]==1,.N,by=i][["N"]]
+	else(myTable[i,"Unrelated_Cases"]=0)
+}
+print("Done with unrelated tabulation")
+rm(bd_unrelated)
+#Exome Tabulation
+exomeSamples <- fread("/home/akp98077/Phase_1_Regeneron_PID_List.txt")
+bd_exome <- bd[IID %in% exomeSamples[["eid"]],]
+for(i in binaryTraits){
+	if(length(bd_exome[bd_exome[[i]]==0,.N,by=i][["N"]])>0)
+	myTable[i,"Exome_Controls"]=bd_exome[bd_exome[[i]]==0,.N,by=i][["N"]]
+	else(myTable[i,"Exome_Controls"]=0)
+}
+for(i in binaryTraits){
+	if(length(bd_exome[bd_exome[[i]]==1,.N,by=i][["N"]])>0)
+	myTable[i,"Exome_Cases"]=bd_exome[bd_exome[[i]]==1,.N,by=i][["N"]]
+	else(myTable[i,"Exome_Cases"]=0)
+}
+print("Done with exome tabulation")
+rm(bd_exome)
+
+myTable<-as.data.table(myTable)
+myTable[,"Cases":=as.double(Cases)]
+myTable[,"Controls":=as.double(Controls)]
+myTable[,"Missing":=as.double(Missing)]
+myTable[,"Missing":=502621-(Controls+Cases)]
+#downsample for bolt numbers
+write.csv(myTable,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.",myTimeStamp,".csv"))
+
+# {combineTable<-data.frame(matrix(nrow=2,ncol=2))
+#    names(combineTable)=c("remove1","remove2")
+#    for (i in names(bd)[grep("BIN",names(bd))]) {
+#      tryCatch({
+#      myTable=data.frame(table(bd[[i]],useNA="ifany"));names(myTable)[2]=i
+#      combineTable=cbindX(data.frame(combineTable),data.frame(myTable))
+#      #print(i)
+#   },error=function(e){}) }
+#      combineTable <- combineTable[,!duplicated(colnames(combineTable))]
+#      combineTable <- select(combineTable,contains("BIN"))
+#      #print(i)
+#      names(combineTable) =c("FIELD","Controls","Cases","Missing")
+#      write.csv(t(combineTable),quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.",myTimeStamp,".csv"))
+#    }
 
 #Do the same for QUANT variables(This ones easier since we are just summarizing;each variable is of the same length)
 quantVariables=as.data.frame(t(bd[,apply(select(bd,contains("QUANT")),2,summary,)]))
@@ -3046,7 +3148,7 @@ write.csv(quantVariables,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/
 print("time to write files:Stop")
 print(proc.time())
 
-
+system(paste0("cp /GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/workingCode_phenotyping_v5.R /GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.",myTimeStamp,".Rscript"))
 
 #plotting variables
 #just40008[,c(1:12)] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave("test2.pdf",,width=10,height=20,paper='special')
@@ -3056,3 +3158,5 @@ print(proc.time())
 #   endRange=startRange+29
 #   bd[,startRange:endRange] %>% keep(is.numeric) %>% gather() %>% ggplot(aes(value))+facet_wrap(~key,scales="free",ncol=3)+geom_density()+theme(strip.text = element_text(size=4))+ggsave(paste0("/home/jh137539/ukb/benchmarking/codeTesting/plotsForRS/","quantPlots_",startRange,"_",endRange,".pdf"),width=10,height=20,paper='special')
 # }
+
+
