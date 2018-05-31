@@ -1,3 +1,9 @@
+#Original conversion of data
+#/home/jh137539/ukb/ukb_conv \
+#/home/jh137539/ukb/ukb9888.enc_ukb r \
+#-eencoding.ukb \
+#-o/home/jh137539/ukb/fullSet/ukb9888.allFields
+
 #library(tidyverse)
 library(dplyr)
 library(data.table)
@@ -12,6 +18,10 @@ print(proc.time())
 #bd <- fread("/home/jh137539/ukb/fullSet/ukb9888.allFields.tab",header=TRUE, sep="\t")
 #New directory
 bd <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/originalPhenotypes/ukb9888.allFields.tab",header=TRUE, sep="\t")
+#Remove subjects that have withdrawn from study
+withDrawnSubjects <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/withdrawn_samples_11052018.txt",header=T)
+bd<-bd[!f.eid %in% withDrawnSubjects[["IID"]],]
+
 #QCd genetic file created by Ioanna
 #newPCsChipCovar<- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 print("Done reading in file")
@@ -2613,9 +2623,9 @@ bd[,asthma_prim:=ifelse(is.na(asthma_prim),0,asthma_prim)]
 bd[,copd_prim_second:=ifelse(is.na(copd_prim_second),0,copd_prim_second)]
 bd[,asthma_prim_second:=ifelse(is.na(asthma_prim_second),0,asthma_prim_second)]
 #Create a spirometry based phenotype
-bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred>80,0,NA))]
-bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<=0.7&specialRequest_QUANT_FEV1_percent_pred_strict<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>0.7&specialRequest_QUANT_FEV1_percent_pred_strict>80,0,NA))]
-bd[,specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict<=0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyLoose := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<0.7&specialRequest_QUANT_FEV1_percent_pred<80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>=0.7&specialRequest_QUANT_FEV1_percent_pred>=80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict := ifelse(specialRequest_QUANT_FEV1_FVC_ratio<0.7&specialRequest_QUANT_FEV1_percent_pred_strict<80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio>=0.7&specialRequest_QUANT_FEV1_percent_pred_strict>=80,0,NA))]
+bd[,specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict<0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<80,1,ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>=0.7&f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=80,0,NA))]
 
 #Create a mapping of Self report + Spirometry for cases and controls. Case defined from union of nurses interview and primary hes code "J44". Do this for strict and loose defined spirometry(field 20152)
 bd[,specialRequest_BIN_copdMappingLoose:=ifelse(copd_prim==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyLoose==1,1,ifelse(copd_prim==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyLoose==0,0,NA))]
@@ -2698,16 +2708,21 @@ fieldInterview=grep(x=names(bd),pattern=(paste0("^f_","20002_0_dxCode","1465")),
 fieldHES="HES_block_p_M15_M19_Arthrosis_BIN"
 bd[,map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis := ifelse(bd[[fieldInterview]]==1 | bd[[fieldHES]]==1,1,ifelse(bd[[fieldInterview]]==0 & bd[[fieldHES]]==0,0,NA))]
 #Create osteo special request variable(excluding M05-M14 from cases and controls)
-bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,ifelse(bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]==1,1,
+#Discussion on 05/23/2018; we will now only be excluding M05-M14 from controls. Cases will be allowed to have M05-M14
+bd[,specialRequest_BIN_osteoarthritis_all:= ifelse(bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]==1,1,
+  ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,
   bd[["map2way3char_intCode1465_hesCodeM15throughM19_BIN_osteoarthritis"]]))]
 #OA hip
-bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
+bd[,specialRequest_BIN_osteoarthritis_hip:= ifelse(HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,
   ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 #OA knee
-bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M17_BIN_Gonarthrosis==1,1,
+bd[,specialRequest_BIN_osteoarthritis_knee:= ifelse(HES_p_M17_BIN_Gonarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,
   ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 #OA hip and/or knee
-bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
+bd[,specialRequest_BIN_osteoarthritis_knee_or_hip:= ifelse(HES_p_M17_BIN_Gonarthrosis==1|HES_p_M16_BIN_Coxarthrosis==1,1,
+  ifelse(HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN==1,NA,
   ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA)))]
 
 #renal kidney failure updated with block coding
@@ -2786,7 +2801,11 @@ quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
 
 #Create Ashutoshes variable (insterted before residualization process)
 bd[,specialRequest_QUANT_appendicular_lean_mass:=f_23258_2_0_f_QUANT_Arms_lean_mass + f_23275_2_0_f_QUANT_Legs_lean_mass]
-
+#Bone-density data
+bd[,f_3148_4105_4124_f_QUANT_BMD_Combined:=
+ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&!is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left),f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left,
+  ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left)&!is.na(f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right),f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right,
+    ifelse(!is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD),f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD,NA)))]
 #Read in Ioanna's covarFile
 covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 #Create a variable to signify that these subjects are for the bolt analysis
@@ -2797,6 +2816,7 @@ bd <- merge(bd,covarFiles,by=c("FID","IID"),all.x=T)
 bd_residualization <- bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],"f_20160_0_0_f_BIN_Ever_smoked"),with=FALSE]
 bd_residualization  <- bd_residualization[,quantOutcome1.Brain$V1:=NULL]
 bd_residualization  <- bd_residualization[,nonPriorityPhenotypes$V1:=NULL]
+
 for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
   tryCatch({
   residModel=lm(data=bd_residualization,bd_residualization[[phenoVariable]]~age+sex+chip,na.action=na.exclude)
@@ -2956,13 +2976,15 @@ hesDataPrimSecMerged_OA[,specialRequest_QUANT_OA_HES_based_age_of_onset:=diagYea
 bd <- merge(bd,hesDataPrimSecMerged_OA[,.(IID,specialRequest_QUANT_OA_HES_based_age_of_onset)],by="IID",all.x=T)
 #Set OA cases with age of onset >=50 to NA
 bd[,specialRequest_BIN_OA_under_age_50 := ifelse(is.na(specialRequest_QUANT_OA_HES_based_age_of_onset)&is.na(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis)&map2way_NI_code1465_BIN_osteoarthritis==0,0,ifelse(specialRequest_QUANT_OA_HES_based_age_of_onset<=50|f_20009_0_dxAgeCode1465_QUANT_osteoarthritis<=50,1,ifelse(f_20009_0_dxAgeCode1465_QUANT_osteoarthritis>=50&specialRequest_QUANT_OA_HES_based_age_of_onset>=50,NA,NA)))]
-bd[,specialRequest_BIN_OA_under_age_50 := ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_OA_under_age_50)]
+bd[,specialRequest_BIN_OA_under_age_50 := ifelse(specialRequest_BIN_OA_under_age_50==1,1,ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_OA_under_age_50))]
 #OA non-load bearing joints
+#Discussion on 05/23/2018; we will now only be excluding M05-M14 from controls. Cases will be allowed to have M05-M14
 hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
 hesDataOA <- hesDataCombined[diag %like% "M18"|diag %in% "M1901"|diag %in% "M1902"|diag %in% "M1903"|diag %in% "M1904"|diag %in% "M1990"|diag %in% "M1991"|diag %in% "M1992"|diag %in% "M1993"|diag %in% "M1994",]
 hesDataOA <- hesDataOA[!duplicated(hesDataOA,by=c("eid")),]
+#Discussion on 05/23/2018; we will now only be excluding M05-M14 from controls. Cases will be allowed to have M05-M14
 bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(IID %in% hesDataOA[["eid"]],1,ifelse(specialRequest_BIN_osteoarthritis_all==0,0,NA))]
-bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_osteoarthritis_non_load_bearing_joints)]
+bd[,specialRequest_BIN_osteoarthritis_non_load_bearing_joints:= ifelse(specialRequest_BIN_osteoarthritis_non_load_bearing_joints==1,1,ifelse(bd[["HES_block_p_M05_M14_Inflammatory_polyarthropathies_BIN"]]==1,NA,specialRequest_BIN_osteoarthritis_non_load_bearing_joints))]
 #Pain extremes
 #Update the controls to be controls for just specific phenotype
 bd[,specialRequest_any_pain_6159_vs_no_pain:=ifelse(f_6159_code1_BIN_Headache==0 & f_6159_code2_BIN_Facial_pain==0 & f_6159_code3_BIN_Neck_or_shoulder_pain==0 & f_6159_code4_BIN_Back_pain==0 & f_6159_code5_BIN_Stomach_or_abdominal_pain==0 & f_6159_code6_BIN_Hip_pain==0 & f_6159_code7_BIN_Knee_pain==0 & f_6159_code8_BIN_Pain_all_over_the_body==0,0,ifelse(f_6159_code1_BIN_Headache==1 | f_6159_code2_BIN_Facial_pain==1 | f_6159_code3_BIN_Neck_or_shoulder_pain==1 | f_6159_code4_BIN_Back_pain==1 | f_6159_code5_BIN_Stomach_or_abdominal_pain==1 | f_6159_code6_BIN_Hip_pain ==1 | f_6159_code7_BIN_Knee_pain==1 | f_6159_code8_BIN_Pain_all_over_the_body==1,1,NA))]
@@ -3008,11 +3030,7 @@ names(medicationData)[3:ncol(medicationData)]=paste0(names(medicationData)[3:nco
 bd <- merge(bd,medicationData[,c("IID",names(medicationData)[3:ncol(medicationData)]),with=F],by="IID",all.x=T)
 #For subjects that are missing from the medication table set to 0
 for(currentField in names(medicationData)[3:length(names(medicationData))]) set(bd, i=which(is.na(bd[[currentField]])), j=currentField, value=0)
-#Bone-density data
-bd[,f_3148_4105_4124_f_QUANT_BMD_Combined:=
-ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&!is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left),f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left,
-  ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left)&!is.na(f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right),f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right,
-    ifelse(!is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD),f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD,NA)))]
+
 
 #Remove other malignant neoplasms (Suggestions from Robert S)
 bd[,f_40006_0_p_C44_BIN_Other_malignant_neoplasms_of_skin:=NULL]
@@ -3057,6 +3075,13 @@ primary_hypertension_subjects= fieldLong[dxField=="p_I270",f.eid]
 bd[,specialRequest_BIN_primary_hypertension_I270:=0]
 bd[IID %in% primary_hypertension_subjects,specialRequest_BIN_primary_hypertension_I270:=1]
 
+#Need to add in regeneron ID
+rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
+rgc_linker <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/25k_Genotype-Phenotype_Linker.txt")
+names(rgc_id_set)[2]="Sample_EID"
+mergedLinker<-merge(rgc_linker,rgc_id_set)
+bd<- merge(bd,mergedLinker[,.(Phenotype_EID,RGC_ID)],by.x="IID",by.y="Phenotype_EID",all.x=T)
+
 #Create time stamp to append to phenotype file
 myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
 #create a list of variables that have been coded to this point
@@ -3068,19 +3093,19 @@ bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 #Write All to one file
 connectionAll <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.",myTimeStamp,".txt"), open="wt") 
 #writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
-write.table(bd[,c("FID","IID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID","RGC_ID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 
 #Write Binary File
 connectionBin <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
-write.table(bd[,c("FID","IID",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+write.table(bd[,c("FID","IID","RGC_ID",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
 connectionQuant <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Does not contain brain imaging"),connectionQuant)
-write.table(bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+write.table(bd[,c("FID","IID","RGC_ID",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
 
 #Summarize variables
@@ -3161,7 +3186,7 @@ myTable<-as.data.table(myTable)
 myTable[,"Cases":=as.double(Cases)]
 myTable[,"Controls":=as.double(Controls)]
 myTable[,"Missing":=as.double(Missing)]
-myTable[Field %in% binaryTraits,"Missing":=502621-(Controls+Cases)]
+myTable[Field %in% binaryTraits,"Missing":=nrow(bd)-(Controls+Cases)]
 myTable[Field %in% quantitativeTraits&is.na(Missing),"Missing":=0]
 #downsample for bolt numbers
 #write.csv(myTable,quote=F,file=paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.tables.",myTimeStamp,".csv"))
