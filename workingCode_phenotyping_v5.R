@@ -148,6 +148,13 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "36"]$FieldID){
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=NA)}
 
+#Code 100313
+for(currentField in dataDictionary[dataDictionary$Coding %in% "100313"]$FieldID){
+  #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
+  fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-7), j=field, value=NA)
+  for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+
 print("Finished coding standard binary fields")
 
 #Condition value on a passing measurement
@@ -3074,6 +3081,15 @@ fieldLong <- fieldLong[!duplicated(fieldLong,by=c("f.eid","dxField")),]
 primary_hypertension_subjects= fieldLong[dxField=="p_I270",f.eid]
 bd[,specialRequest_BIN_primary_hypertension_I270:=0]
 bd[IID %in% primary_hypertension_subjects,specialRequest_BIN_primary_hypertension_I270:=1]
+#Code up asthma phenotypes defined by Robert (06/07/2018)
+#Hes primary as cases, controls must not have asthma based on secondary or self-report phenotype
+bd[,hes_primary_p_j45_BIN_asthma_select_controls:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==0,0,ifelse(f_6152_0_code8_BIN_Asthma==0,0,ifelse(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==0,0,NA))))]
+#Case only phenotypes
+#primary cases set to 1 and secondary and self-reported phenotyes set to 0
+bd[,hes_primary_p_j45_BIN_asthma_prim_vs_sec_and_SR_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==1,0,ifelse(f_6152_0_code8_BIN_Asthma==1,0,ifelse(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==1,0,NA))))]
+#Sensitivity of case only
+bd[,hes_primary_p_j45_BIN_asthma_prim_vs_M2W_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==1,0,NA))]
+
 
 #Need to add in regeneron ID
 rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
