@@ -3083,20 +3083,25 @@ bd[,specialRequest_BIN_primary_hypertension_I270:=0]
 bd[IID %in% primary_hypertension_subjects,specialRequest_BIN_primary_hypertension_I270:=1]
 #Code up asthma phenotypes defined by Robert (06/07/2018)
 #Hes primary as cases, controls must not have asthma based on secondary or self-report phenotype
-bd[,hes_primary_p_j45_BIN_asthma_select_controls:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==0,0,ifelse(f_6152_0_code8_BIN_Asthma==0,0,ifelse(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==0,0,NA))))]
+#I structured this to deal with missing data
+bd[,hes_primary_p_j45_BIN_asthma_select_controls:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(is.na(f_6152_0_code8_BIN_Asthma)&is.na(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma)&map2way_NI_code1111_BIN_asthma==0,0,ifelse(is.na(f_6152_0_code8_BIN_Asthma)&f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==0&map2way_NI_code1111_BIN_asthma==0,0,ifelse(is.na(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma)&f_6152_0_code8_BIN_Asthma==0&map2way_NI_code1111_BIN_asthma==0,0,ifelse(f_6152_0_code8_BIN_Asthma==0&f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==0&map2way_NI_code1111_BIN_asthma==0,0,NA)))))]
 #Case only phenotypes
 #primary cases set to 1 and secondary and self-reported phenotyes set to 0
-bd[,hes_primary_p_j45_BIN_asthma_prim_vs_sec_and_SR_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==1,0,ifelse(f_6152_0_code8_BIN_Asthma==1,0,ifelse(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==1,0,NA))))]
+bd[,hes_primary_p_j45_BIN_asthma_prim_vs_sec_and_SR_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==1,0,ifelse(is.na(f_22127_0_0_f_BIN_Doctor_diagnosed_asthma)&f_6152_0_code8_BIN_Asthma==1,0,ifelse(is.na(f_6152_0_code8_BIN_Asthma)&f_22127_0_0_f_BIN_Doctor_diagnosed_asthma==1,0,NA))))]
 #Sensitivity of case only
 bd[,hes_primary_p_j45_BIN_asthma_prim_vs_M2W_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,ifelse(map2way_NI_code1111_BIN_asthma==1,0,NA))]
 
 
-#Need to add in regeneron ID
-rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
-rgc_linker <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/25k_Genotype-Phenotype_Linker.txt")
-names(rgc_id_set)[2]="Sample_EID"
-mergedLinker<-merge(rgc_linker,rgc_id_set)
-bd<- merge(bd,mergedLinker[,.(Phenotype_EID,RGC_ID)],by.x="IID",by.y="Phenotype_EID",all.x=T)
+#Need to add in regeneron ID for 25k
+#rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
+#rgc_linker <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/25k_Genotype-Phenotype_Linker.txt")
+#names(rgc_id_set)[2]="Sample_EID"
+#mergedLinker<-merge(rgc_linker,rgc_id_set)
+#bd<- merge(bd,mergedLinker[,.(Phenotype_EID,RGC_ID)],by.x="IID",by.y="Phenotype_EID",all.x=T)
+
+#Add in 50K linker info
+rgc_linker_50k <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/50k_linkertoVCF.txt",header=T)
+bd<- merge(bd,rgc_linker_50k,by.x="IID",by.y="IID",all.x=T)
 
 #Create time stamp to append to phenotype file
 myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
@@ -3109,19 +3114,19 @@ bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 #Write All to one file
 connectionAll <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.",myTimeStamp,".txt"), open="wt") 
 #writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
-write.table(bd[,c("FID","IID","RGC_ID",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
 
 #Write Binary File
 connectionBin <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
-write.table(bd[,c("FID","IID","RGC_ID",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
 connectionQuant <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.QUANT.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This quantitative trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Does not contain brain imaging"),connectionQuant)
-write.table(bd[,c("FID","IID","RGC_ID",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
+write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",grep("_QUANT_",names(bd),value=T)),with=FALSE],connectionQuant,sep="\t",row.names=F,quote=F)
 close(connectionQuant)
 
 #Summarize variables
