@@ -2607,8 +2607,8 @@ c(print("correlation between tobin FEV1.pred and new FEV1.pred:"),print(cor.test
 #bd[,specialRequest_BIN_spirometry_based_COPD := ifelse(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd==0 & !is.na(map2way3char_intCode1112_hesCodeJ44_BIN_chronic_obstructive_airways_disease_copd),0,ifelse(specialRequest_QUANT_FEV1_FVC_ratio < 0.7 & specialRequest_QUANT_FEV1_percent_pred < 80,1,NA))]
 #Extract primary ICD10 codes for asthma and COPD
 hesDataCombined<-rbind(hesDataPrim[,c(1,5)],hesDataSec[,c(1,4)])
-hesDataCOPDExacPrim <- hesDataPrim[diag %like% "J44",]
-hesDataCOPDExacPrimSecondary <- hesDataCombined[diag %like% "J44",]
+hesDataCOPDExacPrim <- hesDataPrim[diag %like% "J44"|diag %like% "J41"|diag %like% "J42"|diag %like% "J43",]
+hesDataCOPDExacPrimSecondary <- hesDataCombined[diag %like% "J44"|diag %like% "J41"|diag %like% "J42"|diag %like% "J43",]
 hesDataCOPDExacPrim<-hesDataCOPDExacPrim[!duplicated(hesDataCOPDExacPrim,by=c("eid")),]
 hesDataCOPDExacPrimSecondary<-hesDataCOPDExacPrimSecondary[!duplicated(hesDataCOPDExacPrimSecondary,by=c("eid")),]
 hesDataAsthmaExac <- hesDataPrim[diag %like% "J45",]
@@ -2654,6 +2654,9 @@ bd[,specialRequest_BIN_copdMappingLoose_noAsthma_primAndSec:=ifelse((copd_prim_s
 bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
 bd[,specialRequest_BIN_copdMappingStrict_noAsthma_primAndSec_tobin_derived:=ifelse((copd_prim_second==1|f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==1|specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==1)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),1,ifelse((copd_prim_second==0&f_20002_0_dxCode1112_BIN_chronic_obstructive_airways_disease_copd==0&specialRequest_BIN_copdBySpirOnlyStrict_tobin_derived==0)&(f_20002_0_dxCode1111_BIN_asthma!=1&f_6152_0_code8_BIN_Asthma!=1&asthma_prim_second!=1),0,NA))]
 
+#Update the 2way mapping of COPD to include J41-J44
+#I just used a simple ifelse statment using the J41-J44 definition created in the COPD exacerbation section above. Exacerbation=hospital diagnosed COPD of J41-J44
+bd[,map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd:=ifelse(copd_prim_second==1,1,map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd)]
 
 #COPD phenotype (Hanna definition)
 #Need to get diagnosis dates for secondaries using primary data
@@ -2680,7 +2683,7 @@ names(copdPrimarySecondWithEpiData_hospital_Wide)=c("f_eid","specialRequest_QUAN
 #Merge to full data table
 bd <- merge(bd,copdPrimarySecondWithEpiData_hospital_Wide,by="f_eid",all.x=TRUE)
 #Subjects with NA are set to zero
-bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+#bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation := ifelse(is.na(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation),0,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
 
 #Create exacerbation binary variable using definition by Hana
 # hesDataCOPDExacPrimHannaDefinition <- hesDataPrim[diag %like% "J440"|diag %like% "J441"|diag %like% "J449",]
@@ -2690,21 +2693,21 @@ bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation := ifelse(is.
 # hesDataCOPDExacPrimarySecondaryHannaDefinition[,specialRequest_BIN_copdExacerbation_hanna_definition:=1]
 # bd <- merge(bd,hesDataCOPDExacPrimarySecondaryHannaDefinition[,c("eid","specialRequest_BIN_copdExacerbation_hanna_definition")],by.x="f_eid",by.y="eid",all.x=T)
 #bd[,specialRequest_BIN_copdExacerbation_hanna_definition:=ifelse(is.na(specialRequest_BIN_copdExacerbation_hanna_definition),0,specialRequest_BIN_copdExacerbation_hanna_definition)]
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition:=ifelse(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation==0,0,ifelse(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation>=1,1,NA))]
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly:=ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,ifelse(f_20160_0_0_f_BIN_Ever_smoked==1,specialRequest_BIN_copdExacerbation_hanna_definition,NA))]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition:=ifelse(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation==0,0,ifelse(specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation>=1,1,NA))]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly:=ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked),NA,ifelse(f_20160_0_0_f_BIN_Ever_smoked==1,specialRequest_BIN_copdExacerbation_hanna_definition,NA))]
 #GOLD STAGES based on martin tobin (main difference is the use of smokers with at least 0.42 for proportion of pack years in life). Uses subjects that meet ERS/ATS criteria
-bd[,specialRequest_QUANT_GOLD_tobin := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7|is.na(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict)|is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=80,1,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=79 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=50,2,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=49 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=30,3,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<30,4,NA))))))]
+#bd[,specialRequest_QUANT_GOLD_tobin := ifelse(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict>0.7|is.na(specialRequest_QUANT_FEV1_FVC_ratio_martin_tobin_derived_strict)|is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(is.na(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict),NA,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=80,1,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=79 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=50,2,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<=49 & f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict>=30,3,ifelse(f_20154_0_0_f_QUANT_Forced_expiratory_volume_in_1_second_FEV1_predicted_percentage_strict<30,4,NA))))))]
 #Hanna_definition_with_GOLD_2_or_higher. This is a case only variable. Looking at exacerbators versus non-exacerbators
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition))]
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly))]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition))]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_GOLD2orHigher := ifelse(is.na(specialRequest_QUANT_GOLD_tobin),NA,ifelse(specialRequest_QUANT_GOLD_tobin<2,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly))]
 #Hanna_definition_with_GOLD_2_or_higher or any type of COPD diagnosis. This is a case only variable. Looking at exacerbators versus non-exacerbators
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition)]
-bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly)]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition)]
+#bd[,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly_included_NI_HES_SPIROMETRY := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_BIN_copdExacerbation_hanna_definition_smokersOnly)]
 
 #Case only Tobin with GOLD stage 2 criteria defined using martin tobin FEV1 and FEV1/FVC ratio with ERS/ATS criteria
-bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_SPIROMETRY := ifelse(as.numeric(specialRequest_QUANT_GOLD_tobin)==1|is.na(specialRequest_QUANT_GOLD_tobin),NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
-bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
-bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_smokersOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked)|f_20160_0_0_f_BIN_Ever_smoked==0,NA,ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation))]
+#bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_SPIROMETRY := ifelse(as.numeric(specialRequest_QUANT_GOLD_tobin)==1|is.na(specialRequest_QUANT_GOLD_tobin),NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+#bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation)]
+#bd[,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation_caseOnly_smokersOnly_includes_SPIROMETRY_NI_HES := ifelse(is.na(f_20160_0_0_f_BIN_Ever_smoked)|f_20160_0_0_f_BIN_Ever_smoked==0,NA,ifelse(is.na(specialRequest_QUANT_GOLD_tobin)&specialRequest_QUANT_GOLD_tobin<2&map2way_NI_code1112_BIN_chronic_obstructive_airways_diseasecopd==0,NA,specialRequest_QUANT_number_of_hospitalizing_copd_exacerbation))]
 
 ###########################################################################################################################
 
@@ -3098,7 +3101,10 @@ bd[,hes_primary_p_j45_BIN_asthma_prim_vs_sec_and_SR_case_only:=ifelse(HES_primar
 bd[,hes_primary_p_j45_BIN_asthma_prim_vs_M2W_case_only:=ifelse(HES_primary_p_J45_BIN_Asthma==1,1,
   ifelse(map2way_NI_code1111_BIN_asthma==1,0,NA))]
 
-
+#IBD phenotypes created by Oksana
+oksana <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB2/IBD_UC_CD_ca_co.csv")
+names(oksana)=c("IID","specialRequest_BIN_IBD_ibd_related_severity","specialRequest_BIN_CD_crohns_disease","specialRequest_BIN_UC_ulcerative_colitis")
+bd <- merge(bd,oksana)
 #Need to add in regeneron ID for 25k
 #rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
 #rgc_linker <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/25k_Genotype-Phenotype_Linker.txt")
