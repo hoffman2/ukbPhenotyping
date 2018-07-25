@@ -2816,6 +2816,8 @@ bd[,f_3148_4105_4124_f_QUANT_BMD_Combined:=
 ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&!is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left),f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left,
   ifelse(is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD)&is.na(f_4105_0_0_f_QUANT_Heel_bone_mineral_density_BMD_left)&!is.na(f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right),f_4124_0_0_f_QUANT_Heel_bone_mineral_density_BMD_right,
     ifelse(!is.na(f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD),f_3148_0_0_f_QUANT_Heel_bone_mineral_density_BMD,NA)))]
+#Request from Dawn
+bd[,specialRequest_QUANT_WholeBodyFatFreeMass_WholeBodyFatMass_ratio:=f_23101_0_0_f_QUANT_Whole_body_fat_free_mass/f_23100_0_0_f_QUANT_Whole_body_fat_mass]
 #Read in Ioanna's covarFile
 covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
 #Create a variable to signify that these subjects are for the bolt analysis
@@ -3103,8 +3105,28 @@ bd[,hes_primary_p_j45_BIN_asthma_prim_vs_M2W_case_only:=ifelse(HES_primary_p_J45
 
 #IBD phenotypes created by Oksana
 oksana <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB2/IBD_UC_CD_ca_co.csv")
-names(oksana)=c("IID","specialRequest_BIN_IBD_ibd_related_severity","specialRequest_BIN_CD_crohns_disease","specialRequest_BIN_UC_ulcerative_colitis")
-bd <- merge(bd,oksana)
+names(oksana)=c("IID","specialRequest_BIN_uncontrolled_IBD","specialRequest_BIN_uncontrolled_crohns_disease","specialRequest_BIN_uncontrolled_ulcerative_colitis")
+bd <- merge(bd,oksana,all.x=T)
+
+#Linda Request
+#bd[,specialRequest_BIN_20126_code3and4and5:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==1,1,
+#	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==0,0,NA))]
+#bd[,specialRequest_BIN_20126_code3and4:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1,1,
+#	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0,0,NA))]
+bd[,specialRequest_BIN_20126_code3vs5:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1,1,
+	ifelse(f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1,NA,
+	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0&f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==1,0,
+	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==0,NA,NA))))]
+#Set up next variable for exclusions
+bd[,f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions := f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe]	
+#Requires exclusions to implement after coding (from Linda)
+mentalExclusions <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/exclusions_mental_linda.ls",header=F)
+#set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1 &specialRequest_BIN_20126_code3and4and5==0,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3and4and5",value=NA)
+#set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3and4",value=NA)
+set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)&apply(bd[, names(bd) %in% "specialRequest_BIN_20126_code3vs5",with=FALSE]==0,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3vs5",value=NA)
+set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)&apply(bd[, names(bd) %in% "f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",with=FALSE]==0,1,any,na.rm=T)),j="f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",value=NA)
+	
+
 #Need to add in regeneron ID for 25k
 #rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
 #rgc_linker <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/25k_Genotype-Phenotype_Linker.txt")
