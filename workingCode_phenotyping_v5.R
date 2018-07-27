@@ -2745,17 +2745,18 @@ bd[,map2way3char_intCode1192_hesCodeN17throughN19_BIN_renal_kidney_failure := if
 #AD, Used the Phenotype coding describe by Jimmy Liu in GWAX nature paper
 #F+M
 #Using 0,1,2 coding
-bd[,f_20107_20110_code1_QUANT_Heart_disease:=apply(bd[,.(f_20107_0_code1_BIN_Heart_disease,f_20110_0_code1_BIN_Heart_disease)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code2_QUANT_Stroke:=apply(bd[,.(f_20107_0_code2_BIN_Stroke,f_20110_0_code2_BIN_Stroke)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code3_QUANT_Lung_cancer:=apply(bd[,.(f_20107_0_code3_BIN_Lung_cancer,f_20110_0_code3_BIN_Lung_cancer)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code4_QUANT_Bowel_cancer:=apply(bd[,.(f_20107_0_code4_BIN_Bowel_cancer,f_20110_0_code4_BIN_Bowel_cancer)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code6_QUANT_Chronic_bronchitis_emphysema:=apply(bd[,.(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema,f_20110_0_code6_BIN_Chronic_bronchitis_emphysema)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code8_QUANT_High_blood_pressure:=apply(bd[,.(f_20107_0_code8_BIN_High_blood_pressure,f_20110_0_code8_BIN_High_blood_pressure)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code9_QUANT_Diabetes:=apply(bd[,.(f_20107_0_code9_BIN_Diabetes,f_20110_0_code9_BIN_Diabetes)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code10_QUANT_Alzheimer_s_disease_dementia:=apply(bd[,.(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia,f_20110_0_code10_BIN_Alzheimer_s_disease_dementia)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code11_QUANT_Parkinson_s_disease:=apply(bd[,.(f_20107_0_code11_BIN_Parkinson_s_disease,f_20110_0_code11_BIN_Parkinson_s_disease)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code12_QUANT_Severe_depression:=apply(bd[,.(f_20107_0_code12_BIN_Severe_depression,f_20110_0_code12_BIN_Severe_depression)],1,function(x) sum(x,na.rm=T))]
-bd[,f_20107_20110_code13_QUANT_Prostate_cancer:=apply(bd[,.(f_20107_0_code13_BIN_Prostate_cancer,f_20110_0_code13_BIN_Prostate_cancer)],1,function(x) sum(x,na.rm=T))]
+#Moving away from 0,1,2 to just 0/1 coding
+bd[,f_20107_20110_code1_BIN_Heart_disease:=ifelse(apply(bd[,.(f_20107_0_code1_BIN_Heart_disease,f_20110_0_code1_BIN_Heart_disease)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code2_BIN_Stroke:=ifelse(apply(bd[,.(f_20107_0_code2_BIN_Stroke,f_20110_0_code2_BIN_Stroke)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code3_BIN_Lung_cancer:=ifelse(apply(bd[,.(f_20107_0_code3_BIN_Lung_cancer,f_20110_0_code3_BIN_Lung_cancer)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code4_BIN_Bowel_cancer:=ifelse(apply(bd[,.(f_20107_0_code4_BIN_Bowel_cancer,f_20110_0_code4_BIN_Bowel_cancer)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code6_BIN_Chronic_bronchitis_emphysema:=ifelse(apply(bd[,.(f_20107_0_code6_BIN_Chronic_bronchitis_emphysema,f_20110_0_code6_BIN_Chronic_bronchitis_emphysema)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code8_BIN_High_blood_pressure:=ifelse(apply(bd[,.(f_20107_0_code8_BIN_High_blood_pressure,f_20110_0_code8_BIN_High_blood_pressure)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code9_BIN_Diabetes:=ifelse(apply(bd[,.(f_20107_0_code9_BIN_Diabetes,f_20110_0_code9_BIN_Diabetes)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code10_BIN_Alzheimer_s_disease_dementia:=ifelse(apply(bd[,.(f_20107_0_code10_BIN_Alzheimer_s_disease_dementia,f_20110_0_code10_BIN_Alzheimer_s_disease_dementia)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code11_BIN_Parkinson_s_disease:=ifelse(apply(bd[,.(f_20107_0_code11_BIN_Parkinson_s_disease,f_20110_0_code11_BIN_Parkinson_s_disease)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code12_BIN_Severe_depression:=ifelse(apply(bd[,.(f_20107_0_code12_BIN_Severe_depression,f_20110_0_code12_BIN_Severe_depression)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code13_BIN_Prostate_cancer:=ifelse(apply(bd[,.(f_20107_0_code13_BIN_Prostate_cancer,f_20110_0_code13_BIN_Prostate_cancer)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
 #Set females to NA for prostate cancer
 bd[f_31_0_0_f_BIN_Sex=="0",f_20107_20110_code13_QUANT_Prostate_cancer:=NA]
 # #F+M+S
@@ -2793,8 +2794,8 @@ bd[,specialRequest_QUANT_pack_years:= (specialRequest_QUANT_numCigarettes/20)*(s
 #binOutcome1.case200 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/binary_outcome1.case200.ls",header=F,data.table=F)
 #quantOutcome1 <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/benchmarking/codeTesting/quant_outcome1.ls",header=F,data.table=F)
 #Not interested in Brain imaging data right now
-quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
-quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/brain_imaging_variables.txt",header=F,data.table=F)
+#quantOutcome1.noBrain <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/quant_outcome1.noBrainImaging.ls",header=F,data.table=F)
+#quantOutcome1.Brain <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/brain_imaging_variables.txt",header=F,data.table=F)
 nonPriorityPhenotypes <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/nonPriorityPhenotypes.txt",header=F)
 bd[,IID:=f_eid]
 bd[,FID:=f_eid]
@@ -2806,7 +2807,7 @@ bdNames <- as.data.frame(cbind(names(bd),names(bd)))
 #quantOutcome1 <- inner_join(quantOutcome1,bdNames)
 #binOutcome1.case200 <- inner_join(binOutcome1.case200,bdNames)
 #quantOutcome1.noBrain <- inner_join(quantOutcome1.noBrain,bdNames)
-quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
+#quantOutcome1.Brain <- inner_join(quantOutcome1.Brain,bdNames)
 #Variable for removing brain imaging from phenotype file
 
 #Create Ashutoshes variable (insterted before residualization process)
@@ -2826,7 +2827,7 @@ covarFiles <- fread(file="/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/de
 bd <- merge(bd,covarFiles,by=c("FID","IID"),all.x=T)
 #Create set of variables that we want to rank-normalize residuals,need to explicitly mention smoking as its a binary phenotype
 bd_residualization <- bd[,c("FID","IID",grep("_QUANT_",names(bd),value=T),names(covarFiles)[3:ncol(covarFiles)],"f_20160_0_0_f_BIN_Ever_smoked"),with=FALSE]
-bd_residualization  <- bd_residualization[,quantOutcome1.Brain$V1:=NULL]
+#bd_residualization  <- bd_residualization[,quantOutcome1.Brain$V1:=NULL]
 bd_residualization  <- bd_residualization[,nonPriorityPhenotypes$V1:=NULL]
 
 for(phenoVariable in names(bd_residualization)[3:ncol(bd_residualization)]){
@@ -3109,23 +3110,41 @@ names(oksana)=c("IID","specialRequest_BIN_uncontrolled_IBD","specialRequest_BIN_
 bd <- merge(bd,oksana,all.x=T)
 
 #Linda Request
-#bd[,specialRequest_BIN_20126_code3and4and5:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==1,1,
-#	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==0,0,NA))]
-#bd[,specialRequest_BIN_20126_code3and4:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1,1,
-#	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0& f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0,0,NA))]
 bd[,specialRequest_BIN_20126_code3vs5:=ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==1,1,
-	ifelse(f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==1,NA,
-	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0&f_20126_0_code4_BIN_Probable_Recurrent_major_depression_moderate==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==1,0,
-	ifelse(f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe==0&f_20126_0_code5_BIN_Single_Probable_major_depression_episode==0,NA,NA))))]
+	ifelse(f_20126_0_code5_BIN_Single_Probable_major_depression_episode==1,0,NA))]
 #Set up next variable for exclusions
 bd[,f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions := f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe]	
-#Requires exclusions to implement after coding (from Linda)
-mentalExclusions <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/exclusions_mental_linda.ls",header=F)
-#set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1 &specialRequest_BIN_20126_code3and4and5==0,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3and4and5",value=NA)
-#set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3and4",value=NA)
-set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)&apply(bd[, names(bd) %in% "specialRequest_BIN_20126_code3vs5",with=FALSE]==0,1,any,na.rm=T)),j="specialRequest_BIN_20126_code3vs5",value=NA)
-set(bd,i=which(apply(bd[, names(bd) %in% mentalExclusions[["V1"]],with=FALSE]>=1,1,any,na.rm=T)&apply(bd[, names(bd) %in% "f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",with=FALSE]==0,1,any,na.rm=T)),j="f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",value=NA)
+set(bd,i=which(apply(bd[, names(bd) %like% "f_20126_0_",with=F]==1,1,any,na.rm=T)&apply(bd[, names(bd) %in% "f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",with=FALSE]==0,1,any,na.rm=T)),j="f_20126_0_code3_BIN_Probable_Recurrent_major_depression_severe_withExclusions",value=NA)
 	
+#Diptee Request
+colerectalCancer_combined<-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/colorectalCancer.ls",header=F)
+bd[,specialRequest_BIN_colerectalCancer_combined:= 0]
+set(bd,i=which(apply(bd[,names(bd) %in% colerectalCancer_combined[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_colerectalCancer_combined",value=1)
+
+myMelanoma<-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/melanoma.ls",header=F)
+bd[,specialRequest_BIN_melanoma_combined:= 0]
+set(bd,i=which(apply(bd[,names(bd) %in% myMelanoma[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_melanoma_combined",value=1)
+
+head_neck_squamous <-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/head_neck_squamous.ls",header=F)
+bd[,specialRequest_BIN_head_neck_squamous:= 0]
+set(bd,i=which(apply(bd[,names(bd) %in% head_neck_squamous[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_head_neck_squamous",value=1)
+
+pericarditis <-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/pericarditis.ls",header=F)
+bd[,specialRequest_BIN_pericarditis:= 0]
+set(bd,i=which(apply(bd[,names(bd) %in% pericarditis[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_pericarditis",value=1)
+
+peritonitis <-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/peritonitis.ls",header=F)
+bd[,specialRequest_BIN_peritonitis:= 0]
+set(bd,i=which(apply(bd[,names(bd) %in% peritonitis[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_peritonitis",value=1)
+
+#OA Pain phenotype created by Ioanna and merged in here
+Knee_OA_pain<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/Knee_OA_pain/Knee_OA_pain-Knee_OA_pain.pheno",select=c("IID","Knee_OA_pain"),col.names=c("IID","specialRequest_BIN_Knee_OA_pain"))
+Hip_OA_pain<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/Hip_OA_pain/Hip_OA_pain-Hip_OA_pain.pheno",select=c("IID","Hip_OA_pain"),col.names=c("IID","specialRequest_BIN_Hip_OA_pain"))
+OA_joint_pain_union<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/OA_joint_pain_union/OA_joint_pain_union-OA_joint_pain_union.pheno",select=c("IID","OA_joint_pain_union"),col.names=c("IID","specialRequest_BIN_OA_joint_pain_union"))
+OA_joint_pain_intersection<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/OA_joint_pain_intersection/OA_joint_pain_intersection-OA_joint_pain_intersection.pheno",select=c("IID","OA_joint_pain_intersection"),col.names=c("IID","specialRequest_BIN_OA_joint_pain_intersection"))
+#Combine all together and then merge with main table
+oaMerged <- merge(Knee_OA_pain,Hip_OA_pain,all=T) %>% merge(OA_joint_pain_union,all=T) %>% merge(OA_joint_pain_intersection,all=T)
+bd <- merge(bd,oaMerged,all.x=T,by="IID")
 
 #Need to add in regeneron ID for 25k
 #rgc_id_set <- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/25k_freeze1/build_38/data/pVCF/Linker_Regeneron_UKBB2.txt",header=T)
