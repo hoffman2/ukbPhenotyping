@@ -21,6 +21,9 @@ bd <- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/originalPhenotypes/ukb
 #Remove subjects that have withdrawn from study
 withDrawnSubjects <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/withdrawn_samples_11052018.txt",header=T)
 bd<-bd[!f.eid %in% withDrawnSubjects[["IID"]],]
+#Withdrawn subjects based on new email from 
+withDrawnSubjects2<-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/subject_withdrawal_10232018.ls",header=T)
+bd<-bd[!f.eid %in% withDrawnSubjects2[["IID"]],]
 
 #QCd genetic file created by Ioanna
 #newPCsChipCovar<- fread("/GWD/appbase/projects/RD-TSci-PhewasUKB/josh/phenotypes/ukb2604_imp_chr1_v2_s487405.pheno.v2",header=T)
@@ -333,12 +336,19 @@ for(currentField in dataDictionary[dataDictionary$Coding %in% "230"]$FieldID){
   for(field in fieldArray) set(bd, i=which(bd[[field]]==2), j=field, value=1)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==3), j=field, value=1)}
 
+#Recode simple fall as it is a follow up question to fractures. Subjects that are controls from fracture question are controls for this variable
 #Recode Data-code 100349 (-1=NA,-3=NA)
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100349"]$FieldID){
   #fieldArray=names(select(bd,starts_with(paste0("f.",currentField,"."))))
   fieldArray= grep(x=names(bd),pattern=(paste0("^f\\.",currentField,"\\.")),value=TRUE)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-1), j=field, value=NA)
   for(field in fieldArray) set(bd, i=which(bd[[field]]==-3), j=field, value=NA)}
+ 
+#Based on Brent paper, Fix the fracture variable to set NA to controls and draw on baseline and first followup visit, overwriting original variable with this information
+bd[,f.2463.0.0:=ifelse(apply(bd[,grep(x=names(bd),pattern=(paste0("^f\\.",2463,"\\.")),value=TRUE),with=F][,f.2463.0.0:f.2463.1.0]==1,1,any,na.rm=T),1,f.2463.0.0)]
+#Notice returning field f.2463.0.0 if statment is false, this is because of the follow-up structure. If a subject is a control for first question than they are set to NA for second question whereas we want them to be controls for second question
+bd[,f.3005.0.0:=ifelse(apply(bd[,grep(x=names(bd),pattern=(paste0("^f\\.",3005,"\\.")),value=TRUE),with=F][,f.3005.0.0:f.3005.1.0]==1,1,any,na.rm=T),1,f.2463.0.0)]
+#More on this coding is present later in the phenotyping script related 3005 and dealing with subjects that have a fracture but not from simple fall
 
 #Recode Data-code 100352 (-3=NA) #I identified an issue after tabulating data where some subjects had a "-1" which is not part of original data coding, these will be set to missing
 for(currentField in dataDictionary[dataDictionary$Coding %in% "100352"]$FieldID){
@@ -1423,7 +1433,7 @@ fieldWide[fieldWide$`-9`=="-9",c(2:ncol(fieldWide))]=NA
 #Group 1 : Heart disease, Stroke, High blood pressure, Chronic bronchitis/emphysema, Alzheimer's disease/dementia, Diabetes.
 #Group 2 : Parkinson's disease, Severe Depression, Lung cancer, Bowel cancer, Prostate cancer.
 #Breast cancer was not availble for selection by subjects even though code present in field
-#Starting with group 1 (note that -5 is in both group 1 and group 2, this is breast cancer)
+#Starting with group 1 (note that 5 is in both group 1 and group 2, this is breast cancer)
 fieldWide[fieldWide$`-11`=="-11",c("1","2","6","8","9","10","5")]=NA
 fieldWide[fieldWide$`-13`=="-13",c("1","2","6","8","9","10","5")]=NA
 #Set group1 none of the above
@@ -2272,7 +2282,7 @@ for(currentName in names(bd)[grep("map2way_NI_code",names(bd))]) setnames(bd,nam
 fractureList <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/fractureList.ls",header=F)
 #First set everone to 0(no fractures)
 bd[,specialRequest_map2way_BIN_combinedFractures:=0]
-#Used an apply statement;if subject has any frtacture in the list, than code as 1, else leave alone
+#Used an apply statement;if subject has any fracture in the list, than code as 1, else leave alone
 set(bd,i=which(apply(bd[, names(bd) %in% fractureList[["V1"]],with=FALSE]==1,1,any)),j="specialRequest_map2way_BIN_combinedFractures",value=1)
 
 #####################################################################################################################################
@@ -2757,8 +2767,11 @@ bd[,f_20107_20110_code10_BIN_Alzheimer_s_disease_dementia:=ifelse(apply(bd[,.(f_
 bd[,f_20107_20110_code11_BIN_Parkinson_s_disease:=ifelse(apply(bd[,.(f_20107_0_code11_BIN_Parkinson_s_disease,f_20110_0_code11_BIN_Parkinson_s_disease)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
 bd[,f_20107_20110_code12_BIN_Severe_depression:=ifelse(apply(bd[,.(f_20107_0_code12_BIN_Severe_depression,f_20110_0_code12_BIN_Severe_depression)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
 bd[,f_20107_20110_code13_BIN_Prostate_cancer:=ifelse(apply(bd[,.(f_20107_0_code13_BIN_Prostate_cancer,f_20110_0_code13_BIN_Prostate_cancer)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
+bd[,f_20107_20110_code13_BIN_Breast_cancer:=ifelse(apply(bd[,.(f_20107_0_code5_BIN_Breast_cancer,f_20110_0_code5_BIN_Breast_cancer)],1,function(x) sum(x,na.rm=T))>=1,1,0)]
 #Set females to NA for prostate cancer
 bd[f_31_0_0_f_BIN_Sex=="0",f_20107_20110_code13_QUANT_Prostate_cancer:=NA]
+#Males to NA for breast cancer
+bd[f_31_0_0_f_BIN_Sex=="1",f_20107_20110_code13_BIN_Breast_cancer:=NA]
 # #F+M+S
 # bd[,f_20107_20111_20110_0_code1_BIN_Heart_disease:=ifelse(f_20107_0_code1_BIN_Heart_disease==1|f_20111_0_code1_BIN_Heart_disease==1|f_20110_0_code1_BIN_Heart_disease==1,1,ifelse(f_20107_0_code1_BIN_Heart_disease==0&f_20111_0_code1_BIN_Heart_disease==0&f_20110_0_code1_BIN_Heart_disease==0,0,NA))]
 # bd[,f_20107_20111_20110_0_code2_BIN_Stroke:=ifelse(f_20107_0_code2_BIN_Stroke==1|f_20111_0_code2_BIN_Stroke==1|f_20110_0_code2_BIN_Stroke==1,1,ifelse(f_20107_0_code2_BIN_Stroke==0&f_20111_0_code2_BIN_Stroke==0&f_20110_0_code2_BIN_Stroke==0,0,NA))]
@@ -3137,6 +3150,10 @@ peritonitis <-fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/depende
 bd[,specialRequest_BIN_peritonitis:= 0]
 set(bd,i=which(apply(bd[,names(bd) %in% peritonitis[["V1"]],with=F]==1,1,any)),j="specialRequest_BIN_peritonitis",value=1)
 
+#Recode simple fall as it is a follow up question to fractures. Subjects that are controls from fracture question are controls for this variable
+#Subjects that are cases from 2463 and controls from 3005 are set to missing
+bd[,f_3005_0_0_f_BIN_Fracture_resulting_from_simple_fall:=ifelse(f_2463_0_0_f_BIN_Fractured_broken_bones_in_last_5_years==0,0,ifelse(f_2463_0_0_f_BIN_Fractured_broken_bones_in_last_5_years==1&f_3005_0_0_f_BIN_Fracture_resulting_from_simple_fall==0,NA,f_3005_0_0_f_BIN_Fracture_resulting_from_simple_fall))]
+
 #OA Pain phenotype created by Ioanna and merged in here
 Knee_OA_pain<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/Knee_OA_pain/Knee_OA_pain-Knee_OA_pain.pheno",select=c("IID","Knee_OA_pain"),col.names=c("IID","specialRequest_BIN_Knee_OA_pain"))
 Hip_OA_pain<- fread("/GWD/appbase/projects/RD-TSci-UKB/500k_phase1_GWASoutput/RAWHPC/Hip_OA_pain/Hip_OA_pain-Hip_OA_pain.pheno",select=c("IID","Hip_OA_pain"),col.names=c("IID","specialRequest_BIN_Hip_OA_pain"))
@@ -3156,7 +3173,11 @@ bd <- merge(bd,oaMerged,all.x=T,by="IID")
 #Add in 50K linker info
 rgc_linker_50k <- fread("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/dependencies/50k_linkertoVCF.txt",header=T)
 bd<- merge(bd,rgc_linker_50k,by.x="IID",by.y="IID",all.x=T)
-
+#Add in the exome generated PCs from Ioanna
+exomePCs<- fread("/GWD/appbase/projects/RD-TSci-UKB/UKBB_exomesdownload/Ioanna/phenoWithQCinfo_subset_withOA_v5.txt")
+#Reduce data to necessary columns for joining
+exomePCs<-exomePCs[,c(grep("FID$|IID|InExomesRelatedAllEthnicities|InExomesRelatedEUR|InExomesUnrelatedAllEthnicities|InExomesUnrelatedEUR|PC_EURandUnrelated_usingWESonly|PC_EURandRelated_usingWESonly",names(exomePCs),value=T)),with=FALSE]
+bd<- merge(bd,exomePCs,by=c("IID","FID"),all.x=T)
 #Create time stamp to append to phenotype file
 myTimeStamp=gsub(pattern="-","",as.character(Sys.Date( )))
 #create a list of variables that have been coded to this point
@@ -3168,13 +3189,13 @@ bd<- bd[,nonPriorityPhenotypes$V1:=NULL]
 #Write All to one file
 connectionAll <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.ALL.",myTimeStamp,".txt"), open="wt") 
 #writeLines(paste("#This trait file was created using workingCode_phenotyping_v5.R on 10/13/2017;Brain imaging and HES cancer data removed;new 2 way RWD mapping;includes primary diag"),connectionAll)
-write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T)),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
+write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",names(covarFiles)[3:ncol(covarFiles)],grep("_QUANT_",names(bd),value=T),grep("_BIN",names(bd),value=T),grep("_CAT_",names(bd),value=T),names(exomePCs)[3:length(names(exomePCs))]),with=FALSE],connectionAll,quote=F,row.names=F,sep="\t")
 close(connectionAll)
-
+#
 #Write Binary File
 connectionBin <- file(paste0("/GWD/appbase/projects/RD-TSci-UKB/workingPhenotypes/UKB9888.BIN.",myTimeStamp,".txt"), open="wt")
 #writeLines(paste("#This binary trait file was created using workingCode_phenotyping_v5.R on 10/13/2017"),connectionBin)
-write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",grep("_BIN",names(bd),value=T)),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
+write.table(bd[,c("FID","IID","RGC_ID","Matrix_Barcode","Sample_Name","ExomeQC","sample_id",grep("_BIN",names(bd),value=T),grep("InExomesRelatedAllEthnicities|InExomesRelatedEUR|InExomesUnrelatedAllEthnicities|InExomesUnrelatedEUR|PC_EURandUnrelated_usingWESonly|PC_EURandRelated_usingWESonly",names(exomePCs),value=T),with=FALSE],connectionBin,sep="\t",row.names=F,quote=F) 
 close(connectionBin) 
 
 #Write Quantitative File with Brain imaging with comments for first line
@@ -3195,6 +3216,7 @@ myTable[,"Field"]=c(binaryTraits,quantitativeTraits)
 row.names(myTable)=c(binaryTraits,quantitativeTraits)
 #Raw tabulation
 for(i in binaryTraits){
+	print(paste0("here we go ",i))
 	if(length(bd[bd[[i]]==0,.N,by=i][["N"]])>0)
 	myTable[i,"Controls"]=bd[bd[[i]]==0,.N,by=i][["N"]]
 	else(myTable[i,"Controls"]=0)
